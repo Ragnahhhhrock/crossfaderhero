@@ -1,57 +1,57 @@
-# DJ Mixing Championships
+# DJ Battle Championships
 
-The competition circuit is the spine of career mode. Gigs build skill, money and reputation; contests are how you climb. **The end goal of the game is to win the World Final and be crowned the best DJ in the world.**
+The contest circuit is the spine of the **Battle DJ** career path (see [CAREER-PATHS.md](CAREER-PATHS.md)). You start as a bedroom turntablist, enter local contests, win them, then take on the national and international championships. **The goal of this path is to win the World Final and be crowned the best DJ in the world.**
 
 ## The ladder
 
 | Tier | Event | Field | Advance by |
 |---|---|---|---|
-| 1 | **Local heat** (a club night in your city) | 8–12 DJs | Win the night |
-| 2 | **Regional final** | Local heat winners in the region | Top 2 |
-| 3 | **National final** | Regional qualifiers | Win = national champion |
-| 4 | **International rounds** (continental qualifiers) | National champions | Top 4 |
-| 5 | **World Final** | 8 finalists | Win = World Champion — game's win state |
+| 1 | **Local contests** (battle nights in your city) | 8–12 DJs | Win a local contest to qualify for nationals |
+| 2 | **National championship** | Local winners from across the country | Win = national champion |
+| 3 | **International championship** | National champions from around the world | Rounds through to the World Final |
+| 4 | **World Final** | 8 finalists | Win = World Champion — this path's win state |
 
-- Each season runs the full ladder once. Losing knocks you out until next season's local heats, so the career keeps going between attempts.
-- Entering the first local heat needs a minimum reputation from gigs, so the bedroom and early gigs come first.
-- Each tier is a bigger venue, bigger crowd and louder pressure than the last: back room → club → arena stage → world-final stage.
+- Entering your first local contest needs a minimum skill rating from bedroom practice, so you learn the basics first.
+- Early on you'll lose local contests; placing still earns reputation, and you can enter as often as they run.
+- Each season runs the national and international championships once. Losing knocks you out until next season, so the career keeps going between attempts.
+- Each tier is a bigger venue and crowd: bar back room → club → theatre → world-final arena stage.
 
-## Rounds and format
+## Formats
 
-- **Set length** grows with the tier: ~6 min (heats) → 10 → 15 → 20 min (World Final).
-- **Rules per round** keep it fresh, e.g. "own music only", "set BPM window", "must include a set track the organisers hand you", "genre switch mid-set", "two decks, no sync".
-- Later tiers run **multiple rounds per event** (heat → semi → final), each with its own rule.
-- Players use their own MP3 folders, as everywhere else in the game.
+- **Showcase routine:** a set-length solo routine (~3 min at locals → 6 min at the World Final) on two turntables and a battle mixer, scored by judges.
+- **Head-to-head battle:** two DJs trade short rounds (60–90 s) back to back; judges pick a winner per pair. Used for knockout brackets at nationals and internationals.
+- **Round rules** keep it fresh, e.g. "no samples, records only", "set BPM window", "use the organisers' battle record", "scratch-only round".
+- Players use their own MP3 folders on control vinyl, as everywhere else in the game.
 
 ## Judging
 
-A panel of 3 judges scores each set; each judge weights the criteria a little differently (one is a technical purist, one is all about the crowd, etc.).
+A panel of 3 judges scores each routine; each judge weights the criteria a little differently (a technical purist, a crowd judge, a creativity judge).
 
 | Criterion | Measured from |
 |---|---|
-| Beatmatching | Phase drift between decks during overlaps (phase meter data) |
-| Transitions & phrasing | Mixes landing on phrase boundaries, EQ/filter handling, no clashing basslines |
-| Track selection & flow | Key compatibility (Camelot), energy curve, BPM changes |
-| Technique | Loops, hot cues, effects, cutting — used well, not spammed |
-| Crowd response | Live crowd energy over the set |
-| Penalties | Dead air, trainwrecks, clipping into the red, breaking round rules |
+| Technical skill | Scratch accuracy and timing on the beat, cleanness of cuts, juggles that stay locked |
+| Difficulty | Range and speed of techniques (flares, crabs, transformers, multi-hit juggles) |
+| Creativity & originality | Variety, routine structure, unexpected combinations, not repeating patterns |
+| Musicality | Staying on beat and in phrase, track selection, flow between sections |
+| Stage presence & crowd | Live crowd energy and hype through the routine |
+| Penalties | Dead air, needle skips/trainwrecks, going over time, breaking round rules |
 
 Scores are shown at the end with judge comments so the player knows what to work on.
 
 ## Rivals
 
-- A recurring cast of rival DJs with names, styles and skill ratings who show up through the tiers.
-- AI rivals' sets are simulated scores (not audio), shaped by their style and a bit of randomness.
+- A recurring cast of rival turntablists with names, styles and skill ratings who show up through the tiers.
+- AI rivals' routines are simulated scores (not audio), shaped by their style and a bit of randomness.
 - A nemesis rival who beat you once reappears higher up the ladder.
 
 ## Rewards
 
-- **Prize money, reputation and followers** (feeds the SoundCloud-style platform and manager offers).
-- **Booking boost**: a title unlocks bigger venues and fees (e.g. "National Champion" on your flyers).
-- **Gear and trophies** that appear in the bedroom / studio.
-- **World Champion** ends the main story with a finale; the career stays open for defending the title.
+- **Prize money, reputation and followers** (feeds the SoundCloud-style platform and sponsor offers).
+- **Titles** on your profile and flyers, e.g. "National Champion".
+- **Gear, battle records and trophies** that appear in the bedroom.
+- **World Champion** ends this path's main story with a finale; the career stays open for defending the title.
 
 ## Build notes
 
-- Depends on: scoring engine (phase drift, phrase/key analysis already available from Phase 1 analysis), crowd simulation, career state.
-- Suggested order: scoring engine → single local heat → full ladder and seasons → rivals → judging flavour and finale.
+- Depends on: turntable + battle mixer gear, scratch/juggle detection, scoring engine, crowd simulation, career state.
+- Suggested order: turntable gear → scratch training mode → scoring engine → single local contest → full ladder and seasons → head-to-head battles → rivals → judging flavour and finale.
