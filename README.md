@@ -1,6 +1,6 @@
 # Crossfader Hero
 
-A browser DJ career simulator. Plug your own music into two virtual CDJs, mix on a two-channel mixer, and (in later phases) work your way from bedroom practice to headlining a festival.
+A browser DJ career simulator. Plug your own music into two virtual CDJs, mix on a two-channel mixer, and (in later phases) work your way from bedroom practice to headlining a festival — and climb the DJ mixing championships from local heats to the World Final to be crowned the best DJ in the world (see [docs/COMPETITIONS.md](docs/COMPETITIONS.md)).
 
 Domain: crossfaderhero.com. Contact: contact@crossfaderhero.com
 
@@ -24,7 +24,7 @@ You start in a small bedroom: a desk against the wall with two media players, a 
 - **Phase meter** between the waveforms shows where each deck sits in its bar and how many milliseconds apart the beats are.
 - **Keyboard:** press `?` in the app for the full map.
 
-Not in phase 1 (see the build plan): key lock / master tempo, scoring, career mode, venues and crowds, the SoundCloud-style platform.
+Not in phase 1 (see the build plan): key lock / master tempo, scoring, career mode, the mixing championships, venues and crowds, the SoundCloud-style platform.
 
 ## Develop
 
