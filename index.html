@@ -3,15 +3,65 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crossfader Hero</title>
-    <meta name="description" content="Crossfader Hero — mix your own music on virtual CDJs and work your way from the bedroom to the festival main stage." />
+    <title>Crossfader Hero — mix your own music, from bedroom to main stage</title>
+    <meta name="description" content="A free browser DJ game. Load your own MP3s onto two virtual decks and a mixer in a 3D bedroom, learn to beatmatch, and work your way up to headlining a festival." />
+    <meta name="keywords" content="DJ game, DJ simulator, browser DJ, virtual decks, beatmatching, mixing, CDJ, DJ practice" />
+    <meta name="author" content="Crossfader Hero" />
+    <meta name="application-name" content="Crossfader Hero" />
+    <meta name="theme-color" content="#0b0c0f" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://crossfaderhero.com/" />
+
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Crossfader Hero" />
+    <meta property="og:url" content="https://crossfaderhero.com/" />
+    <meta property="og:title" content="Crossfader Hero — mix your own music, from bedroom to main stage" />
+    <meta property="og:description" content="Load your own MP3s onto two virtual decks and a mixer in a 3D bedroom. Learn to beatmatch, then work your way up to headlining a festival." />
+    <meta property="og:image" content="https://crossfaderhero.com/og-image.png" />
+    <meta property="og:image:secure_url" content="https://crossfaderhero.com/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A bedroom DJ setup with two decks, a mixer and speakers, next to the Crossfader Hero logo." />
+    <meta property="og:locale" content="en_AU" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Crossfader Hero — mix your own music, from bedroom to main stage" />
+    <meta name="twitter:description" content="A free browser DJ game. Your music, two decks, a mixer and a 3D bedroom to practise in." />
+    <meta name="twitter:image" content="https://crossfaderhero.com/twitter-card.png" />
+    <meta name="twitter:image:alt" content="A bedroom DJ setup with two decks, a mixer and speakers, next to the Crossfader Hero logo." />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": ["VideoGame", "WebApplication"],
+        "name": "Crossfader Hero",
+        "url": "https://crossfaderhero.com/",
+        "image": "https://crossfaderhero.com/og-image.png",
+        "description": "A browser DJ game. Load your own MP3s onto two virtual decks and a mixer in a 3D bedroom, learn to beatmatch, and work your way up to headlining a festival.",
+        "genre": ["Music", "Simulation"],
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Any (desktop browser; Chrome or Edge recommended)",
+        "gamePlatform": "Web browser",
+        "playMode": "SinglePlayer",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "AUD" },
+        "email": "contact@crossfaderhero.com"
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>Crossfader Hero is a DJ game that runs in your browser. Please turn on JavaScript to play.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

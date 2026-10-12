@@ -6,7 +6,7 @@ import type { DeckId } from '../types';
 import { toast } from '../state/toasts';
 import { Fader } from './controls';
 import { formatTime, useAnimationFrame, useDeck, usePolled } from './hooks';
-import { HOT_CUE_COLORS, OverviewWaveform } from './waveforms';
+import { hotCueVar, OverviewWaveform } from './waveforms';
 
 const SECONDS_PER_REV = 1.8; // a 33⅓ rpm platter
 
@@ -161,7 +161,7 @@ export function DeckPanel({ id }: { id: DeckId }) {
             <button
               key={i}
               className={`hotcue ${set ? 'set' : ''}`}
-              style={{ '--hc': HOT_CUE_COLORS[i] } as CSSProperties}
+              style={{ '--hc': hotCueVar(i) } as CSSProperties}
               disabled={!deck.loaded}
               onClick={(e) => (e.shiftKey ? deck.deleteHotCue(i) : deck.hotCue(i))}
               onContextMenu={(e) => {

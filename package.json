@@ -7,7 +7,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "brand": "node scripts/brand/build.mjs"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,8 @@
   },
   "homepage": "https://github.com/Ragnahhhhrock/crossfaderhero#readme",
   "dependencies": {
+    "@fontsource/chakra-petch": "^5.3.0",
+    "@fontsource/share-tech-mono": "^5.3.0",
     "idb-keyval": "^6.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -26,11 +29,13 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@types/three": "^0.170.0",
     "@types/wicg-file-system-access": "^2023.10.7",
     "@vitejs/plugin-react": "^4.7.0",
+    "playwright": "^1.64.0",
     "typescript": "^5.9.3",
     "vite": "^5.4.21",
     "vitest": "^2.1.9"

@@ -219,7 +219,7 @@ export default function App() {
           <svg width="26" height="26" viewBox="0 0 64 64" aria-hidden>
             <circle cx="20" cy="32" r="13" fill="none" stroke="var(--deck-a)" strokeWidth="5" />
             <circle cx="44" cy="32" r="13" fill="none" stroke="var(--deck-b)" strokeWidth="5" />
-            <rect x="25" y="28" width="14" height="8" rx="2" fill="var(--ink)" />
+            <rect x="25" y="28" width="14" height="8" rx="2" fill="var(--text)" />
           </svg>
           <span className="wordmark">Crossfader Hero</span>
           <span className="venue">Your bedroom</span>

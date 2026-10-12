@@ -4,3 +4,4 @@ dist
 *.log
 .wrangler
 test/fixtures/*.mp3
+scripts/brand/.cache

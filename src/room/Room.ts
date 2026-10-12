@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { engine } from '../audio/engine';
 import { peakDb } from '../audio/mixer';
+import { hex } from '../design/tokens';
 import { buildCdj, buildMixer, buildSpeaker, type Action, type CdjModel, type MixerModel, type SpeakerModel } from './models';
 import { floorTexture, nightTexture, posterTexture, rugTexture } from './textures';
 
@@ -39,6 +40,8 @@ export class Room {
   private ledLight!: THREE.PointLight;
 
   mode: Mode = 'room';
+  /** Marketing render: fixed camera, gear lit as if mid-set, engine ignored. */
+  private showcase = false;
   private pose: Pose = { pos: START_POSE.pos.clone(), yaw: START_POSE.yaw, pitch: START_POSE.pitch };
   private walkPose: Pose = { pos: START_POSE.pos.clone(), yaw: START_POSE.yaw, pitch: START_POSE.pitch };
   private transition: { from: Pose; to: Pose; fromCentre: number; toCentre: number; t: number } | null = null;
@@ -59,7 +62,7 @@ export class Room {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.03, 30);
     this.camera.rotation.order = 'YXZ';
-    this.scene.background = new THREE.Color(0x0b0c0f);
+    this.scene.background = new THREE.Color(hex('graphite-900'));
     this.build();
     this.applyPose();
   }
@@ -74,12 +77,12 @@ export class Room {
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     s.add(floor);
-    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: 0xd9d4cb, roughness: 1 }));
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: hex('room-ceiling'), roughness: 1 }));
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.y = h;
     s.add(ceiling);
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x34495e, roughness: 0.95 });
-    const accentWall = new THREE.MeshStandardMaterial({ color: 0x2a3446, roughness: 0.95 });
+    const wallMat = new THREE.MeshStandardMaterial({ color: hex('room-wall'), roughness: 0.95 });
+    const accentWall = new THREE.MeshStandardMaterial({ color: hex('room-wall-accent'), roughness: 0.95 });
     const wall = (width: number, mat: THREE.Material, x: number, z: number, ry: number) => {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(width, h), mat);
       m.position.set(x, h / 2, z);
@@ -93,7 +96,7 @@ export class Room {
     wall(d, wallMat, -w / 2, 0, Math.PI / 2); // west
     wall(d, wallMat, w / 2, 0, -Math.PI / 2); // east
     // skirting boards
-    const skirtMat = new THREE.MeshStandardMaterial({ color: 0xe8e2d6, roughness: 0.6 });
+    const skirtMat = new THREE.MeshStandardMaterial({ color: hex('room-trim'), roughness: 0.6 });
     const skirt = (len: number, x: number, z: number, ry: number) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.09, 0.015), skirtMat);
       m.position.set(x, 0.045, z);
@@ -118,7 +121,7 @@ export class Room {
     win.rotation.y = Math.PI / 2;
     const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.0), new THREE.MeshBasicMaterial({ map: nightTexture() }));
     win.add(glass);
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0xe8e2d6, roughness: 0.5 });
+    const frameMat = new THREE.MeshStandardMaterial({ color: hex('room-trim'), roughness: 0.5 });
     for (const [fw, fh, fx, fy] of [[1.42, 0.06, 0, 0.53], [1.42, 0.08, 0, -0.53], [0.06, 1.1, -0.68, 0], [0.06, 1.1, 0.68, 0], [0.03, 1.0, 0, 0]] as const) {
       const f = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.05), frameMat);
       f.position.set(fx, fy, 0.02);
@@ -127,10 +130,10 @@ export class Room {
     s.add(win);
 
     // door on the south wall
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.86, 2.05, 0.04), new THREE.MeshStandardMaterial({ color: 0xd8d0c2, roughness: 0.55 }));
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.86, 2.05, 0.04), new THREE.MeshStandardMaterial({ color: hex('room-trim'), roughness: 0.55 }));
     door.position.set(1.9, 1.025, d / 2 - 0.02);
     s.add(door);
-    const handle = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8), new THREE.MeshStandardMaterial({ color: 0xb0a080, metalness: 0.9, roughness: 0.3 }));
+    const handle = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8), new THREE.MeshStandardMaterial({ color: hex('room-brass'), metalness: 0.9, roughness: 0.3 }));
     handle.position.set(1.57, 1.0, d / 2 - 0.05);
     s.add(handle);
 
@@ -146,12 +149,12 @@ export class Room {
     poster(2, w / 2 - 0.005, 1.6, -0.4, -Math.PI / 2, 1.1);
 
     // desk
-    const deskWood = new THREE.MeshStandardMaterial({ color: 0x2b2522, roughness: 0.55, metalness: 0.05 });
+    const deskWood = new THREE.MeshStandardMaterial({ color: hex('room-desk'), roughness: 0.55, metalness: 0.05 });
     const deskTop = new THREE.Mesh(new RoundedBoxGeometry(DESK.w, 0.04, DESK.d, 2, 0.008), deskWood);
     deskTop.position.set(0, DESK.h - 0.02, DESK.z);
     deskTop.castShadow = deskTop.receiveShadow = true;
     s.add(deskTop);
-    const legMat = new THREE.MeshStandardMaterial({ color: 0x15161a, roughness: 0.4, metalness: 0.7 });
+    const legMat = new THREE.MeshStandardMaterial({ color: hex('room-metal'), roughness: 0.4, metalness: 0.7 });
     for (const lx of [-DESK.w / 2 + 0.05, DESK.w / 2 - 0.05])
       for (const lz of [DESK.z - DESK.d / 2 + 0.05, DESK.z + DESK.d / 2 - 0.05]) {
         const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, DESK.h - 0.04, 0.04), legMat);
@@ -165,17 +168,17 @@ export class Room {
     s.add(shelf);
 
     // LED strip along the back of the desk, washing the wall
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(DESK.w - 0.1, 0.012, 0.012), new THREE.MeshBasicMaterial({ color: 0xb06bff }));
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(DESK.w - 0.1, 0.012, 0.012), new THREE.MeshBasicMaterial({ color: hex('room-led') }));
     strip.position.set(0, DESK.h + 0.006, -ROOM.d / 2 + 0.02);
     s.add(strip);
-    this.ledLight = new THREE.PointLight(0xa45cff, 0.9, 3, 1.8);
+    this.ledLight = new THREE.PointLight(hex('room-led'), 0.9, 3, 1.8);
     this.ledLight.position.set(0, DESK.h + 0.25, -ROOM.d / 2 + 0.15);
     s.add(this.ledLight);
 
     // the gear
     const gearY = DESK.h;
     const gearZ = DESK.z + 0.06;
-    this.cdjs = { A: buildCdj('A', '#5cc8ff'), B: buildCdj('B', '#ffa040') };
+    this.cdjs = { A: buildCdj('A', 'deck-a'), B: buildCdj('B', 'deck-b') };
     this.cdjs.A.group.position.set(-0.305, gearY, gearZ);
     this.cdjs.B.group.position.set(0.305, gearY, gearZ);
     this.mixer = buildMixer();
@@ -184,7 +187,7 @@ export class Room {
 
     // monitors on foam pads, toed in towards the DJ
     for (const side of [-1, 1] as const) {
-      const pad = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.27), new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 1 }));
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.27), new THREE.MeshStandardMaterial({ color: hex('gear-cabinet'), roughness: 1 }));
       const x = side * 0.8;
       const z = DESK.z - 0.08;
       pad.position.set(x, gearY + 0.025, z);
@@ -208,14 +211,14 @@ export class Room {
     const crate = new THREE.Group();
     crate.position.set(1.35, 0, -2.15);
     crate.rotation.y = -0.3;
-    const crateMat = new THREE.MeshStandardMaterial({ color: 0xc9a46a, roughness: 0.8 });
+    const crateMat = new THREE.MeshStandardMaterial({ color: hex('room-crate'), roughness: 0.8 });
     for (const [bw, bh, bd, bx, by, bz] of [[0.36, 0.02, 0.36, 0, 0.01, 0], [0.36, 0.3, 0.02, 0, 0.15, -0.17], [0.36, 0.3, 0.02, 0, 0.15, 0.17], [0.02, 0.3, 0.36, -0.17, 0.15, 0], [0.02, 0.3, 0.36, 0.17, 0.15, 0]] as const) {
       const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), crateMat);
       b.position.set(bx, by, bz);
       b.castShadow = true;
       crate.add(b);
     }
-    const sleeveColours = [0xe2462f, 0x1b1b1b, 0xf2e6cf, 0x2f6bff, 0xffd23f, 0x3ddc84, 0x8a5cff, 0xece8df];
+    const sleeveColours = ['print-red', 'print-ink', 'print-paper', 'wave-low', 'print-sun', 'play', 'print-violet', 'print-magenta'].map(hex);
     for (let i = 0; i < 14; i++) {
       const sl = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.31, 0.006), new THREE.MeshStandardMaterial({ color: sleeveColours[i % sleeveColours.length], roughness: 0.7 }));
       sl.position.set(0, 0.17, -0.14 + i * 0.02);
@@ -225,17 +228,17 @@ export class Room {
     s.add(crate);
 
     // lights: warm ceiling pendant + soft sky fill
-    s.add(new THREE.HemisphereLight(0xaab8ff, 0x3a2a20, 0.55));
-    const pendant = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.16, 0.13, 24, 1, true), new THREE.MeshStandardMaterial({ color: 0x1e1e1e, side: THREE.DoubleSide, roughness: 0.5 }));
+    s.add(new THREE.HemisphereLight(hex('room-fill-sky'), hex('room-fill-ground'), 0.55));
+    const pendant = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.16, 0.13, 24, 1, true), new THREE.MeshStandardMaterial({ color: hex('graphite-700'), side: THREE.DoubleSide, roughness: 0.5 }));
     pendant.position.set(0, h - 0.33, -0.4);
     s.add(pendant);
-    const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.27), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.27), new THREE.MeshBasicMaterial({ color: hex('graphite-900') }));
     cord.position.set(0, h - 0.135, -0.4);
     s.add(cord);
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffe2b0 }));
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), new THREE.MeshBasicMaterial({ color: hex('room-lamp-hot') }));
     bulb.position.set(0, h - 0.37, -0.4);
     s.add(bulb);
-    const warm = new THREE.PointLight(0xffd6a0, 9, 9, 1.5);
+    const warm = new THREE.PointLight(hex('room-lamp'), 9, 9, 1.5);
     warm.position.set(0, h - 0.42, -0.4);
     warm.castShadow = true;
     warm.shadow.mapSize.set(1024, 1024);
@@ -243,7 +246,7 @@ export class Room {
     warm.shadow.radius = 4;
     s.add(warm);
     // desk lamp glow over the gear
-    const task = new THREE.SpotLight(0xfff0dd, 6, 3, 0.7, 0.6, 1.4);
+    const task = new THREE.SpotLight(hex('room-lamp-hot'), 6, 3, 0.7, 0.6, 1.4);
     task.position.set(0, 2.0, -1.6);
     task.target.position.set(0, DESK.h, DESK.z);
     s.add(task, task.target);
@@ -373,6 +376,11 @@ export class Room {
     }
     this.applyPose();
 
+    if (this.showcase) {
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+
     // the gear follows the engine
     this.cdjs.A.update(engine.decks.A, now);
     this.cdjs.B.update(engine.decks.B, now);
@@ -422,6 +430,22 @@ export class Room {
     }
     if (next.x > 1.05 && next.x < 1.7 && next.z < -1.75) next.z = -1.75;
     this.pose.pos.copy(next);
+  }
+
+  /** Frame the setup for a marketing image: camera at `from` looking at `to`. */
+  startShowcase(from = new THREE.Vector3(-0.3, 1.44, -0.9), to = new THREE.Vector3(-0.56, 0.98, -2.2)) {
+    this.showcase = true;
+    this.renderer.toneMappingExposure = 1.3;
+    const d = to.clone().sub(from);
+    this.pose.pos.copy(from);
+    this.pose.yaw = Math.atan2(d.x, -d.z);
+    this.pose.pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
+    this.applyPose();
+    this.cdjs.A.showcase();
+    this.cdjs.B.showcase();
+    this.mixer.update({ ...engine.mixer, state: { A: { ...engine.mixer.state.A, fader: 0.85, low: -0.4 }, B: { ...engine.mixer.state.B, fader: 0.7, hi: 0.3 } }, crossfader: 0.42 } as typeof engine.mixer);
+    this.mixer.meterMats.forEach((col, c) => col.forEach((m, i) => (m.emissiveIntensity = i < [7, 8, 8, 6][c] ? 1.6 : 0.03)));
+    this.ledLight.intensity = 2.4;
   }
 
   dispose() {

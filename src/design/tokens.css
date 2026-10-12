@@ -1,0 +1,175 @@
+/*
+ * Crossfader Hero — design tokens.
+ *
+ * THE single source of truth for colour, type, spacing, radius, elevation and
+ * motion. CSS reads these variables directly; the 3D room and canvas drawing read
+ * them at runtime through src/design/tokens.ts; icons and social images are
+ * rendered from them by scripts/brand. test/design-tokens.test.ts fails the build
+ * if a raw colour or font name appears anywhere else.
+ *
+ * Naming: --{group}-{role}. Never reference a palette step in UI code when a
+ * semantic token exists (use --surface-panel, not --graphite-700).
+ */
+:root {
+  /* ---------- Graphite: the hardware neutrals (dark to light) ---------- */
+  --black: #000000;
+  --white: #ffffff;
+  --graphite-1000: #050607; /* fader slots, voids */
+  --graphite-950: #08090b; /* inputs, waveform wells */
+  --graphite-900: #0b0c0f; /* page */
+  --graphite-850: #0e1013; /* sunken panels */
+  --graphite-800: #121417; /* app chrome */
+  --graphite-750: #16181c; /* chassis */
+  --graphite-700: #1c1e22; /* panel, low edge */
+  --graphite-650: #23262b; /* raised controls */
+  --graphite-600: #2c3036; /* control face */
+  --graphite-500: #33373e; /* edges, knob caps */
+  --graphite-400: #4a4f57; /* fader caps */
+
+  /* ---------- Ink: text on dark ---------- */
+  --ink-100: #ece8df; /* primary text, warm white */
+  --ink-300: #a3a7ad; /* secondary */
+  --ink-500: #6c7178; /* tertiary, disabled labels */
+
+  /* ---------- LCD screens ---------- */
+  --lcd-bg: #0b1317;
+  --lcd-edge: #1c2a30;
+
+  /* ---------- Signal colours: LEDs that mean something ---------- */
+  --deck-a: #5cc8ff; /* ice blue — everything belonging to deck A */
+  --deck-b: #ffa040; /* amber — everything belonging to deck B */
+  --play: #43e08c; /* playing, good, in phase */
+  --cue: #ffb020; /* cue, active toggle, warning */
+  --filter: #c79bff; /* colour FX */
+  --danger: #ff5d5d; /* clipping, end of track, errors */
+  --hot-pink: #ff5d8f;
+  --hot-yellow: #ffcc33;
+  --hot-teal: #5ee0d0;
+
+  /* ---------- Waveform bands ---------- */
+  --wave-low: #2f6bff;
+  --wave-mid: #f0a43a;
+  --wave-high: #f6f1e7;
+  --wave-played: #2b4f7a;
+
+  /* ---------- 3D gear ---------- */
+  --gear-body: #1d1f23;
+  --gear-plate: #26292e;
+  --gear-rubber: #2b2e33;
+  --gear-platter: #3a3e44;
+  --gear-groove: #24272b;
+  --gear-cabinet: #141518;
+  --gear-baffle: #1b1c20;
+  --gear-cone: #2a2a2a;
+
+  /* ---------- 3D bedroom ---------- */
+  --room-wall: #34495e;
+  --room-wall-accent: #2a3446;
+  --room-ceiling: #d9d4cb;
+  --room-trim: #e8e2d6;
+  --room-oak: #a07a58;
+  --room-desk: #2b2522;
+  --room-metal: #15161a;
+  --room-brass: #b0a080;
+  --room-crate: #c9a46a;
+  --room-led: #a45cff;
+  --room-lamp: #ffd6a0;
+  --room-lamp-hot: #ffe2b0;
+  --room-fill-sky: #aab8ff;
+  --room-fill-ground: #3a2a20;
+  --room-sky-top: #060a1c;
+  --room-sky-low: #23305a;
+  --room-city: #05070f;
+  --room-window-warm: #ffd27a;
+  --room-window-cool: #9fc4ff;
+
+  /* ---------- Gig-print palette: posters, sleeves, rug, social art ---------- */
+  --print-paper: #f2e6cf;
+  --print-red: #e2462f;
+  --print-ink: #1b1b1b;
+  --print-night: #12002b;
+  --print-magenta: #ff3d7f;
+  --print-sun: #ffd23f;
+  --print-gold: #d8a24a;
+  --print-rose: #b8475a;
+  --print-plum: #2c2440;
+  --print-plum-light: #3f3560;
+  --print-violet: #8a5cff;
+
+  /* ---------- Semantic aliases (use these in UI) ---------- */
+  --surface-page: var(--graphite-900);
+  --surface-chrome: var(--graphite-800);
+  --surface-chassis: var(--graphite-750);
+  --surface-panel-hi: var(--gear-plate);
+  --surface-panel: var(--graphite-700);
+  --surface-raised: var(--graphite-650);
+  --surface-control: var(--graphite-600);
+  --surface-sunken: var(--graphite-850);
+  --surface-well: var(--graphite-950);
+  --surface-void: var(--graphite-1000);
+  --border-strong: var(--black);
+  --border: var(--graphite-500);
+  --text: var(--ink-100);
+  --text-2: var(--ink-300);
+  --text-3: var(--ink-500);
+  --text-on-signal: var(--graphite-900);
+  --focus: var(--deck-a);
+
+  /* Translucency: always a token mixed with transparent, in fixed steps. */
+  --shade-10: color-mix(in srgb, var(--black) 10%, transparent);
+  --shade-25: color-mix(in srgb, var(--black) 25%, transparent);
+  --shade-40: color-mix(in srgb, var(--black) 40%, transparent);
+  --shade-55: color-mix(in srgb, var(--black) 55%, transparent);
+  --shade-65: color-mix(in srgb, var(--black) 65%, transparent);
+  --shade-80: color-mix(in srgb, var(--black) 80%, transparent);
+  --tint-3: color-mix(in srgb, var(--white) 3%, transparent);
+  --tint-5: color-mix(in srgb, var(--white) 5%, transparent);
+  --tint-8: color-mix(in srgb, var(--white) 8%, transparent);
+  --tint-12: color-mix(in srgb, var(--white) 12%, transparent);
+  --hairline: var(--shade-40);
+  --highlight: var(--tint-8);
+  --scrim: var(--shade-65);
+  --glass: color-mix(in srgb, var(--graphite-900) 88%, transparent);
+  --glass-strong: color-mix(in srgb, var(--graphite-900) 94%, transparent);
+
+  /* ---------- Type ---------- */
+  --font-ui: 'Chakra Petch', system-ui, sans-serif;
+  --font-lcd: 'Share Tech Mono', ui-monospace, monospace;
+  --type-micro: 11px; /* knob labels, axis ticks */
+  --type-small: 12.5px; /* buttons, table meta */
+  --type-body: 14px;
+  --type-strong: 15px; /* track titles */
+  --type-brand: 17px; /* wordmark in the top bar */
+  --type-heading: 20px;
+  --type-readout: 26px; /* LCD time and BPM */
+  --type-display: 72px; /* social and marketing art */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ---------- Space, radius, elevation, motion ---------- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 16px;
+  --space-8: 24px;
+  --radius-led: 2px;
+  --radius-chip: 3px;
+  --radius-button: 5px;
+  --radius-input: 6px;
+  --radius-screen: 8px;
+  --radius-panel: 12px;
+  --shadow-panel: inset 0 1px 0 var(--highlight), 0 6px 20px var(--shade-40);
+  --shadow-control: inset 0 1px 0 var(--tint-8), 0 3px 6px var(--shade-55);
+  --shadow-pop: 0 8px 30px var(--shade-65);
+  --shadow-modal: 0 20px 60px var(--black);
+  --glow-size: 10px;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 0.15s;
+  --duration-base: 0.3s;
+  --duration-scene: 0.85s; /* camera moves in the room */
+}

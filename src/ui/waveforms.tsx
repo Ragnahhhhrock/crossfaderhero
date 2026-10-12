@@ -2,14 +2,11 @@ import { useEffect, useMemo, useRef } from 'react';
 import { engine } from '../audio/engine';
 import { beatAt, beatLength, beatTime } from '../audio/grid';
 import type { Analysis, DeckId } from '../types';
+import { alpha, font, HOT_CUE_TOKENS, token } from '../design/tokens';
 import { useAnimationFrame, useCanvasSize, useDeck } from './hooks';
 
-export const HOT_CUE_COLORS = ['#3ddc84', '#2fb8ff', '#ff5d8f', '#ffcc33', '#b48cff', '#ff8a1f', '#5ee0d0', '#f2f2f2'];
-const LOW = '#2f6bff';
-const MID = '#f0a43a';
-const HIGH = '#f6f1e7';
-const LOOP = 'rgba(255, 196, 0, 0.16)';
-const CUE = '#ffb020';
+/** CSS colour for hot cue i (A–H), from the design tokens. */
+export const hotCueVar = (i: number) => `var(--${HOT_CUE_TOKENS[i]})`;
 
 /** Rekordbox-style three-band column: low at the back, highs in front. */
 function drawColumns(
@@ -49,11 +46,11 @@ function drawColumns(
     paths[1].rect(x, mid - hm, 1, hm * 2);
     paths[2].rect(x, mid - hh, 1, hh * 2);
   }
-  g.fillStyle = LOW;
+  g.fillStyle = token('wave-low');
   g.fill(paths[0]);
-  g.fillStyle = MID;
+  g.fillStyle = token('wave-mid');
   g.fill(paths[1]);
-  g.fillStyle = HIGH;
+  g.fillStyle = token('wave-high');
   g.fill(paths[2]);
 }
 
@@ -63,7 +60,7 @@ const PX_PER_SEC = 120; // real-time seconds
 export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
   const deck = useDeck(id);
   const [ref, w, h] = useCanvasSize();
-  const accent = id === 'A' ? '#5cc8ff' : '#ffa040';
+  const accentToken = id === 'A' ? 'deck-a' : 'deck-b';
 
   useAnimationFrame(() => {
     const c = ref.current;
@@ -76,7 +73,7 @@ export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
     const grid = deck.grid;
     const mid = h / 2;
     if (!a || !grid) {
-      g.fillStyle = 'rgba(255,255,255,0.05)';
+      g.fillStyle = alpha('white', 0.05);
       g.fillRect(0, mid, w, 1);
       return;
     }
@@ -88,7 +85,7 @@ export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
 
     // loop
     if (deck.loop) {
-      g.fillStyle = deck.loop.active ? LOOP : 'rgba(255,196,0,0.06)';
+      g.fillStyle = alpha('cue', deck.loop.active ? 0.16 : 0.06);
       g.fillRect(X(deck.loop.start), 0, X(deck.loop.end) - X(deck.loop.start), h);
     }
 
@@ -98,7 +95,7 @@ export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
     for (let b = firstVisible; b <= lastVisible; b++) {
       const x = Math.round(X(beatTime(grid, b))) + 0.5;
       const down = (((b - grid.downbeat) % 4) + 4) % 4 === 0;
-      g.fillStyle = down ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.14)';
+      g.fillStyle = alpha('white', down ? 0.42 : 0.14);
       g.fillRect(x, 0, 1, down ? h : 6);
       if (!down) g.fillRect(x, h - 6, 1, 6);
     }
@@ -117,17 +114,17 @@ export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
       g.lineTo(x, 7);
       g.fill();
       if (label) {
-        g.font = '600 10px "Chakra Petch", sans-serif';
+        g.font = font('ui', 10, 600);
         g.fillText(label, x + 4, h - 4);
       }
     };
-    marker(deck.cuePoint, CUE);
-    deck.hotCues.forEach((t, i) => t !== null && marker(t, HOT_CUE_COLORS[i], String.fromCharCode(65 + i)));
+    marker(deck.cuePoint, token('cue'));
+    deck.hotCues.forEach((t, i) => t !== null && marker(t, token(HOT_CUE_TOKENS[i]), String.fromCharCode(65 + i)));
 
     // playhead
-    g.fillStyle = 'rgba(0,0,0,0.5)';
+    g.fillStyle = alpha('black', 0.5);
     g.fillRect(w / 2 - 2, 0, 4, h);
-    g.fillStyle = accent;
+    g.fillStyle = token(accentToken);
     g.fillRect(w / 2 - 1, 0, 2, h);
   });
 
@@ -170,20 +167,20 @@ export function OverviewWaveform({ id }: { id: DeckId }) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const X = (t: number) => (t / a.duration) * w;
     const px = X(deck.position);
-    g.fillStyle = 'rgba(10,12,14,0.55)';
+    g.fillStyle = alpha('graphite-900', 0.55);
     g.fillRect(0, 0, px, h);
     if (deck.loop) {
-      g.fillStyle = 'rgba(255,196,0,0.35)';
+      g.fillStyle = alpha('cue', 0.35);
       g.fillRect(X(deck.loop.start), 0, Math.max(2, X(deck.loop.end) - X(deck.loop.start)), h);
     }
-    g.fillStyle = CUE;
+    g.fillStyle = token('cue');
     g.fillRect(X(deck.cuePoint), 0, 1.5, h);
     deck.hotCues.forEach((t, i) => {
       if (t === null) return;
-      g.fillStyle = HOT_CUE_COLORS[i];
+      g.fillStyle = token(HOT_CUE_TOKENS[i]);
       g.fillRect(X(t) - 1, 0, 3, 4);
     });
-    g.fillStyle = '#ffffff';
+    g.fillStyle = token('white');
     g.fillRect(px - 1, 0, 2, h);
   });
 
@@ -241,7 +238,7 @@ export function PhaseMeter() {
     const W = c.width;
     const H = c.height;
     g.clearRect(0, 0, W, H);
-    g.fillStyle = 'rgba(255,255,255,0.18)';
+    g.fillStyle = alpha('white', 0.18);
     g.fillRect(W / 2 - 1, 0, 2, H);
     const ga = A.grid;
     const gb = B.grid;
@@ -260,7 +257,7 @@ export function PhaseMeter() {
     const tempoDiff = A.bpm - B.bpm;
     const x = W / 2 + Math.max(-1, Math.min(1, d * 2)) * (W / 2 - 4);
     const good = Math.abs(ms) < 10 && Math.abs(tempoDiff) < 0.05;
-    g.fillStyle = good ? '#3ddc84' : Math.abs(ms) < 30 ? '#ffcc33' : '#ff5d5d';
+    g.fillStyle = token(good ? 'play' : Math.abs(ms) < 30 ? 'hot-yellow' : 'danger');
     g.fillRect(Math.min(W / 2, x), H / 2 - 3, Math.abs(x - W / 2) || 2, 6);
     const lead = ms > 0 ? 'A ahead' : 'B ahead';
     lab.textContent =

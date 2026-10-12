@@ -64,6 +64,10 @@ export function RoomView({ mode, onModeChange, boothCentre, blockKeys }: Props) 
     const ro = new ResizeObserver(() => room.resize(c.clientWidth, c.clientHeight));
     ro.observe(c);
     room.resize(c.clientWidth, c.clientHeight);
+    if (new URLSearchParams(location.search).has('shot')) {
+      room.startShowcase();
+      document.documentElement.classList.add('shot');
+    }
     let raf = 0;
     let last = performance.now();
     let wasNear = false;
