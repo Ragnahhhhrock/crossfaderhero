@@ -51,10 +51,15 @@ Practise routines in the bedroom, then enter mixing contests and work up the lad
 - Money, reputation and followers work the same way; what earns them differs (gigs vs contests).
 - The bedroom fills with each path's rewards: gig posters and festival passes, or contest trophies and battle records.
 
-## Open questions
+## Switching paths
 
-- Can a player switch paths mid-career, or run both on one save?
-- Should a battle champion get a shortcut onto festival bills (and vice versa)?
+Players can switch paths mid-career on the same save, as many real DJs do.
+
+- **Battle → Pro is the common move.** Battle DJs are the most technically skilled in the world, but there's little money in contests. Many switch to playing house, drum & bass and similar genres to get regular gigs and build a following. The game reflects this: contest prize money is small and irregular next to gig fees.
+- **Skills carry over, fame doesn't.** A battle DJ's technique ratings carry into the Pro path (cleaner mixing, better recovery from mistakes), but bookings and followers start from roughly where a newcomer would. Contest titles don't fill dance floors.
+- **No festival shortcut.** Battle champions are rarely booked to play battle sets at festivals. The battle fan base is tiny next to mainstream festival crowds, who want a straight set with very little technical trickery. A World Champion still has to work up the Pro venue ladder.
+- **Tricks in Pro sets are risky.** Heavy scratching and juggling in a mainstream set lowers crowd energy (most of the crowd finds it boring). A small, well-timed flourish is fine; a battle routine empties the floor.
+- **Pro → Battle** is possible, but a CDJ DJ starts the contest ladder with low turntablism skill and has to train up in the bedroom first.
 
 ## Build notes
 
