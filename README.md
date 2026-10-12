@@ -5,7 +5,7 @@ A browser DJ career simulator. Plug your own music into two virtual CDJs, mix on
 - **Pro DJ** — start as a bedroom DJ and work up to headlining major festivals in packed stadiums.
 - **Battle DJ** — start as a bedroom turntablist, win local mixing contests, then the national and international championships to be crowned the best DJ in the world (see [docs/COMPETITIONS.md](docs/COMPETITIONS.md)).
 
-Domain: crossfaderhero.com. Contact: contact@crossfaderhero.com
+Play it at **https://crossfaderhero.com**. Contact: contact@crossfaderhero.com
 
 ## Your bedroom (3D)
 
@@ -40,16 +40,13 @@ npm run build      # type-check + production build into dist/
 
 Requires Node 18+. Use Chrome or Edge on desktop for the full folder-access experience.
 
-## Deploy to Cloudflare
+## Deploy
 
-The site is static. `wrangler.jsonc` serves `dist/` as Worker static assets:
+**Live at https://crossfaderhero.com.** The `crossfaderhero` Cloudflare Worker is connected to this repo with Workers Builds: every push to `main` runs `npm run build` then `npx wrangler deploy` (static assets from `dist/`, see `wrangler.jsonc`). Pull-request branches get preview builds.
 
-```bash
-npm run build
-npx wrangler deploy
-```
+## Brand and design system
 
-Then attach the `crossfaderhero.com` custom domain to the `crossfaderhero` Worker in the Cloudflare dashboard (Workers & Pages → crossfaderhero → Settings → Domains & Routes).
+Every colour, typeface and measurement comes from `src/design/tokens.css`; `npm test` fails if anything else hard-codes one. The guide is `docs/STYLEGUIDE.md` and live at https://crossfaderhero.com/brand. After changing tokens, regenerate the favicon, icons and social images with `npm run build && npm run brand` (needs `npx playwright install chromium` once).
 
 ## Layout
 
