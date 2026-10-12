@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { engine } from './audio/engine';
 import { useLibrary } from './state/library';
 import { useToasts } from './state/toasts';
@@ -7,7 +7,9 @@ import { Browser } from './ui/Browser';
 import { DeckPanel } from './ui/DeckPanel';
 import { MixerPanel } from './ui/MixerPanel';
 import { PhaseMeter, ScrollingWaveform } from './ui/waveforms';
-import { usePolled } from './ui/hooks';
+import { setUiPaused, usePolled } from './ui/hooks';
+import { RoomView } from './room/RoomView';
+import type { Mode } from './room/Room';
 
 interface DeckKeys {
   cue: string;
@@ -25,7 +27,9 @@ const KEYS: Record<DeckId, DeckKeys> = {
   B: { cue: 'm', play: ',', hot: ['7', '8', '9', '0'], slower: 'o', faster: 'p', nudgeBack: 'k', nudgeFwd: 'l', loop: 'i' },
 };
 
-function useKeyboard(toggleHelp: () => void) {
+function useKeyboard(toggleHelp: () => void, deckKeysOn: boolean) {
+  const on = useRef(deckKeysOn);
+  on.current = deckKeysOn;
   useEffect(() => {
     const held = new Set<string>();
     const down = (e: KeyboardEvent) => {
@@ -36,7 +40,7 @@ function useKeyboard(toggleHelp: () => void) {
       const digit = /^Digit(\d)$/.exec(e.code)?.[1];
       const key = digit ?? k;
       if (key === '?' || (e.shiftKey && e.code === 'Slash')) return toggleHelp();
-      if (k === 'escape') return;
+      if (k === 'escape' || !on.current) return;
       const m = engine.mixer;
       if (k === 'arrowleft') return void (e.preventDefault(), m.setCrossfader(m.crossfader - 0.05));
       if (k === 'arrowright') return void (e.preventDefault(), m.setCrossfader(m.crossfader + 0.05));
@@ -104,7 +108,13 @@ function Help({ onClose }: { onClose: () => void }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="help-title" onClick={(e) => e.stopPropagation()}>
-        <h2 id="help-title">Keyboard</h2>
+        <h2 id="help-title">Keys and tips</h2>
+        <p>
+          In the room: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or arrows to walk, <kbd>Shift</kbd> to hurry, drag to look around.
+          Click Play, Cue, Sync, Loop or the hot-cue pads on the gear itself. Walk up to the desk and press <kbd>E</kbd> to step up to the decks;
+          <kbd>Esc</kbd> steps back.
+        </p>
+        <h3>At the decks</h3>
         <table className="keys">
           <thead>
             <tr><th /><th scope="col">Deck A</th><th scope="col">Deck B</th></tr>
@@ -151,8 +161,14 @@ function Toasts() {
 export default function App() {
   const [help, setHelp] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [mode, setMode] = useState<Mode>('room');
+  setUiPaused(mode === 'room');
+  const [usbOpen, setUsbOpen] = useState(false);
+  const [boothCentre, setBoothCentre] = useState(0.3);
+  const gap = useRef<HTMLDivElement>(null);
   const suspended = usePolled(() => engine.ctx.state !== 'running');
-  useKeyboard(() => setHelp((h) => !h));
+  const nothingLoaded = usePolled(() => !engine.decks.A.loaded && !engine.decks.B.loaded);
+  useKeyboard(() => setHelp((h) => !h), mode === 'booth' && !help && !usbOpen);
 
   useEffect(() => {
     void useLibrary.getState().init();
@@ -161,8 +177,43 @@ export default function App() {
     return () => window.removeEventListener('pointerdown', unlock);
   }, []);
 
+  // open the USB browser on the first visit to the decks
+  useEffect(() => {
+    if (mode === 'booth' && nothingLoaded) setUsbOpen(true);
+    if (mode === 'room') setUsbOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  // the 3D view frames the gear in the gap above the controls
+  useEffect(() => {
+    const el = gap.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      setBoothCentre((r.top + r.height / 2) / window.innerHeight);
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, []);
+
+  // Escape closes the USB drawer before it steps back from the decks
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && usbOpen && !help) {
+        e.stopImmediatePropagation();
+        setUsbOpen(false);
+      }
+    };
+    window.addEventListener('keydown', esc, true);
+    return () => window.removeEventListener('keydown', esc, true);
+  }, [usbOpen, help]);
+
   return (
-    <div className="app">
+    <div className={`app mode-${mode}`}>
+      <RoomView mode={mode} onModeChange={setMode} boothCentre={boothCentre} blockKeys={help || usbOpen} />
+
       <header className="topbar">
         <div className="brand">
           <svg width="26" height="26" viewBox="0 0 64 64" aria-hidden>
@@ -179,35 +230,58 @@ export default function App() {
               Turn on sound
             </button>
           )}
-          <div className="zoom" role="group" aria-label="Waveform zoom">
-            <button className="tiny" onClick={() => setZoom((z) => Math.max(0.5, z / 1.5))} aria-label="Zoom out">−</button>
-            <button className="tiny" onClick={() => setZoom((z) => Math.min(4, z * 1.5))} aria-label="Zoom in">+</button>
-          </div>
+          {mode === 'booth' && (
+            <>
+              <div className="zoom" role="group" aria-label="Waveform zoom">
+                <button className="tiny" onClick={() => setZoom((z) => Math.max(0.5, z / 1.5))} aria-label="Zoom out">−</button>
+                <button className="tiny" onClick={() => setZoom((z) => Math.min(4, z * 1.5))} aria-label="Zoom in">+</button>
+              </div>
+              <button className={`tiny ${usbOpen ? 'on' : ''}`} onClick={() => setUsbOpen((o) => !o)} aria-expanded={usbOpen}>
+                USB browser
+              </button>
+            </>
+          )}
           <button className="tiny" onClick={() => setHelp(true)}>
             Keys &amp; tips
           </button>
+          {mode === 'booth' ? (
+            <button className="tiny" onClick={() => setMode('room')} title="Esc">
+              Step back
+            </button>
+          ) : (
+            <button className="tiny" onClick={() => setMode('booth')} title="E, when you're at the desk">
+              Go to the decks
+            </button>
+          )}
         </div>
       </header>
 
-      <div className="waves">
-        <div className="wave-row wave-a">
-          <span className="wave-tag">A</span>
-          <ScrollingWaveform id="A" zoom={zoom} />
+      <div className="booth-overlay" aria-hidden={mode !== 'booth'}>
+        <div className="booth-gap" ref={gap} />
+        <div className="waves">
+          <div className="wave-row wave-a">
+            <span className="wave-tag">A</span>
+            <ScrollingWaveform id="A" zoom={zoom} />
+          </div>
+          <PhaseMeter />
+          <div className="wave-row wave-b">
+            <span className="wave-tag">B</span>
+            <ScrollingWaveform id="B" zoom={zoom} />
+          </div>
         </div>
-        <PhaseMeter />
-        <div className="wave-row wave-b">
-          <span className="wave-tag">B</span>
-          <ScrollingWaveform id="B" zoom={zoom} />
+
+        <main className="booth">
+          <DeckPanel id="A" />
+          <MixerPanel />
+          <DeckPanel id="B" />
+        </main>
+
+        <div className={`usb-drawer ${usbOpen ? 'open' : ''}`} aria-hidden={!usbOpen}>
+          <Browser />
+          <button className="tiny drawer-close" onClick={() => setUsbOpen(false)}>Close</button>
         </div>
       </div>
 
-      <main className="booth">
-        <DeckPanel id="A" />
-        <MixerPanel />
-        <DeckPanel id="B" />
-      </main>
-
-      <Browser />
       <Toasts />
       {help && <Help onClose={() => setHelp(false)} />}
       <div className="small-screen">Crossfader Hero needs a screen at least 1100 px wide. Open it on a laptop or desktop.</div>

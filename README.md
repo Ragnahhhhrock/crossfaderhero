@@ -4,7 +4,18 @@ A browser DJ career simulator. Plug your own music into two virtual CDJs, mix on
 
 Domain: crossfaderhero.com. Contact: contact@crossfaderhero.com
 
-## Phase 1 — playable decks (this build)
+## Your bedroom (3D)
+
+You start in a small bedroom: a desk against the wall with two media players, a mixer and a pair of monitor speakers, posters, a record crate and an LED strip.
+
+- **Walk** with W A S D or the arrow keys (Shift to hurry), **drag** to look around.
+- **Press buttons on the gear itself**: Play, Cue (hold to preview), Sync, the 4-beat loop and the hot-cue pads are all clickable when you're within arm's reach.
+- **Step up to the decks** with E when you're at the desk (or the "Go to the decks" button). The full controls slide up under a view of your setup; Esc steps back.
+- The 3D gear mirrors the decks: platters spin, the jog rings and buttons light up, the screens show the track, time and BPM, the mixer's faders, knobs and meters move, and the speaker cones pump with the bass.
+- Sound comes out of the two speakers as positioned sources, so it changes as you walk around the room.
+- Add `?no3d` to the URL to skip the room and go straight to the decks.
+
+## Phase 1 — playable decks
 
 - **USB = your folders.** Each deck has a USB slot. "Choose music folder" grants read-only access to a folder of MP3s; add as many folders per USB as you like. Chrome and Edge remember the folders between visits (one click to re-allow); other browsers fall back to picking the folder each visit. Music never leaves your computer.
 - **Track analysis** in a background worker, cached in IndexedDB: BPM, beat grid and downbeat, musical key (Camelot), and a three-band waveform. Genre tags steer the tempo range (e.g. Drum & Bass → 155–185 BPM) to avoid half/double-time mistakes, and the deck's **Grid** menu has ×2 / ÷2 and ±5 ms grid fixes.
@@ -41,7 +52,8 @@ Then attach the `crossfaderhero.com` custom domain to the `crossfaderhero` Worke
 
 ```
 src/
-  audio/      engine (AudioContext), Deck (CDJ transport), Mixer (channels, EQ, filter, crossfader), grid maths
+  audio/      engine (AudioContext), Deck (CDJ transport), Mixer (channels, EQ, filter, crossfader, room speakers), grid maths
+  room/       the 3D bedroom (three.js): scene, gear models, procedural textures, first-person view
   library/    USB folder access + scanning, ID3 tags, BPM/beat-grid/key/waveform analysis, worker
   state/      zustand stores for the library and toasts
   ui/         deck, mixer, browser, waveforms, knobs and faders

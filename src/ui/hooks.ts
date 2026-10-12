@@ -17,14 +17,20 @@ export function useMixer(): Mixer {
   return m;
 }
 
-/** Run a callback every animation frame while mounted. */
+let uiPaused = false;
+/** Stop redrawing the deck/mixer UI while it's hidden (walking around the room). */
+export function setUiPaused(p: boolean) {
+  uiPaused = p;
+}
+
+/** Run a callback every animation frame while mounted (and while the UI is showing). */
 export function useAnimationFrame(cb: (t: number) => void): void {
   const ref = useRef(cb);
   ref.current = cb;
   useEffect(() => {
     let id = 0;
     const loop = (t: number) => {
-      ref.current(t);
+      if (!uiPaused) ref.current(t);
       id = requestAnimationFrame(loop);
     };
     id = requestAnimationFrame(loop);

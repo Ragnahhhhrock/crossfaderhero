@@ -35,15 +35,56 @@ button:disabled { cursor: default; opacity: 0.38; }
 :focus-visible { outline: 2px solid var(--deck-a); outline-offset: 2px; }
 kbd { font: 12px var(--lcd); background: #0e1013; border: 1px solid var(--edge); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; }
 
-.app {
-  display: grid;
-  grid-template-rows: 46px auto auto minmax(180px, 1fr);
-  height: 100vh;
-  min-width: 1100px;
+.app { position: relative; height: 100vh; overflow: hidden; }
+
+/* ---------- 3D room ---------- */
+.room-view { position: absolute; inset: 0; }
+.room-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hover-label { position: fixed; pointer-events: none; background: #0d0f12e6; border: 1px solid #000; color: var(--ink); font-size: 12.5px; padding: 3px 8px; border-radius: 4px; z-index: 5; }
+.step-prompt {
+  position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%);
+  background: #0d0f12d9; border: 1px solid #ffffff1f; border-radius: 8px; padding: 10px 18px; font-size: 16px; font-weight: 600;
+  display: flex; gap: 10px; align-items: center; pointer-events: none;
+  box-shadow: 0 8px 30px #000a;
 }
+.step-prompt kbd { font-size: 15px; padding: 2px 9px; border-color: var(--cue); color: var(--cue); }
+.room-hints { position: absolute; left: 16px; bottom: 14px; display: flex; gap: 18px; color: #ece8dfb3; font-size: 13px; pointer-events: none; text-shadow: 0 1px 3px #000; }
+.room-hints kbd { margin-right: 2px; }
+.room-failed { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: var(--cue); color: #111; padding: 6px 12px; border-radius: 6px; }
 
 /* ---------- top bar ---------- */
-.topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid #0006; }
+.topbar {
+  position: absolute; top: 0; left: 0; right: 0; height: 46px; z-index: 3;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+  background: linear-gradient(#0b0c0fe6, #0b0c0f99 70%, transparent);
+}
+.mode-booth .topbar { background: #121417f2; border-bottom: 1px solid #0006; }
+
+/* ---------- booth overlay (standing at the decks) ---------- */
+.booth-overlay {
+  position: absolute; inset: 46px 0 0 0; z-index: 2;
+  display: flex; flex-direction: column;
+  pointer-events: none;
+  opacity: 0; visibility: hidden; transform: translateY(24px);
+  transition: opacity 0.35s ease, transform 0.45s ease, visibility 0s 0.45s;
+}
+.mode-booth .booth-overlay { opacity: 1; visibility: visible; transform: none; transition: opacity 0.45s ease 0.35s, transform 0.5s ease 0.3s; }
+.booth-overlay > *:not(.booth-gap) { pointer-events: auto; }
+.booth-gap { flex: 1; min-height: 120px; }
+.mode-booth .waves { background: #0b0c0fe6; }
+.mode-booth .booth { background: #0b0c0fe0; }
+.usb-drawer {
+  position: absolute; left: 12px; right: 12px; bottom: 0; height: min(56vh, 520px);
+  display: flex; flex-direction: column;
+  transform: translateY(104%); transition: transform 0.3s ease;
+  box-shadow: 0 -10px 40px #000c;
+}
+.usb-drawer.open { transform: none; }
+.usb-drawer .browser { margin: 0; flex: 1; border-radius: 10px 10px 0 0; }
+.drawer-close { position: absolute; right: 10px; top: 9px; }
+@media (prefers-reduced-motion: reduce) {
+  .booth-overlay, .mode-booth .booth-overlay, .usb-drawer { transition: none; }
+}
 .brand { display: flex; align-items: center; gap: 10px; }
 .wordmark { font-weight: 700; font-size: 17px; letter-spacing: 0.02em; }
 .venue { color: var(--ink-2); font-size: 13px; padding-left: 10px; border-left: 1px solid var(--edge); }
@@ -243,7 +284,7 @@ kbd { font: 12px var(--lcd); background: #0e1013; border: 1px solid var(--edge);
 .folder-chip { display: inline-flex; align-items: center; gap: 4px; background: #1d2024; border: 1px solid #000; border-radius: 12px; padding: 1px 4px 1px 10px; font-size: 12.5px; color: var(--ink-2); }
 .folder-chip button { background: none; border: 0; color: var(--ink-3); padding: 0 4px; }
 .folder-chip button:hover { color: var(--danger); }
-.search { margin-left: auto; width: 240px; background: #08090b; border: 1px solid var(--edge); border-radius: 6px; color: var(--ink); padding: 5px 10px; font: inherit; }
+.search { margin-left: auto; margin-right: 70px; width: 240px; background: #08090b; border: 1px solid var(--edge); border-radius: 6px; color: var(--ink); padding: 5px 10px; font: inherit; }
 .status { font: 12.5px var(--lcd); color: var(--ink-3); min-width: 150px; text-align: right; }
 
 .table { display: flex; flex-direction: column; min-height: 0; flex: 1; }

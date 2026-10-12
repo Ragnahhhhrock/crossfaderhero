@@ -92,6 +92,13 @@ export class Mixer {
   private readonly splitMerger: ChannelMergerNode;
   private readonly monoMaster: GainNode;
   private readonly monoCue: GainNode;
+  /** Low-frequency analyser for things that move with the bass (speaker cones, lights). */
+  readonly bassMeter: AnalyserNode;
+  /** The room's two monitors as positioned sound sources. */
+  private readonly roomSplit: ChannelSplitterNode;
+  readonly speakers: [PannerNode, PannerNode];
+  private readonly roomIn: GainNode;
+  spatial = true;
 
   state: Record<DeckId, ChannelState> = {
     A: { trim: 0, hi: 0, mid: 0, low: 0, filter: 0, fader: 0.8, cue: false },
@@ -117,6 +124,37 @@ export class Mixer {
     this.masterMeterR = ctx.createAnalyser();
     this.masterMeterL.fftSize = 1024;
     this.masterMeterR.fftSize = 1024;
+    this.bassMeter = ctx.createAnalyser();
+    this.bassMeter.fftSize = 512;
+    this.bassMeter.smoothingTimeConstant = 0.55;
+    this.master.connect(this.bassMeter);
+
+    // Left and right channels each feed a speaker positioned in 3D.
+    this.roomIn = ctx.createGain();
+    this.roomSplit = ctx.createChannelSplitter(2);
+    this.roomIn.connect(this.roomSplit);
+    const panner = (x: number) => {
+      const p = ctx.createPanner();
+      p.panningModel = 'equalpower';
+      p.distanceModel = 'inverse';
+      p.refDistance = 1.2;
+      p.rolloffFactor = 0.7;
+      p.coneInnerAngle = 140;
+      p.coneOuterAngle = 300;
+      p.coneOuterGain = 0.45;
+      setVec(p.positionX, p.positionY, p.positionZ, x, 1.2, -2);
+      setVec(p.orientationX, p.orientationY, p.orientationZ, 0, 0, 1);
+      return p;
+    };
+    this.speakers = [panner(-0.7), panner(0.7)];
+    this.roomSplit.connect(this.speakers[0], 0);
+    this.roomSplit.connect(this.speakers[1], 1);
+    // compensate the distance loss at the DJ position
+    const out = ctx.createGain();
+    out.gain.value = 1.4;
+    this.speakers[0].connect(out);
+    this.speakers[1].connect(out);
+    out.connect(ctx.destination);
     this.master.connect(splitter);
     splitter.connect(this.masterMeterL, 0);
     splitter.connect(this.masterMeterR, 1);
@@ -160,6 +198,7 @@ export class Mixer {
       }
     };
     off(() => this.master.disconnect(this.ctx.destination));
+    off(() => this.master.disconnect(this.roomIn));
     off(() => this.master.disconnect(this.monoMaster));
     off(() => this.cueBus.disconnect());
     off(() => this.splitMerger.disconnect());
@@ -167,6 +206,8 @@ export class Mixer {
       this.master.connect(this.monoMaster);
       this.cueBus.connect(this.monoCue);
       this.splitMerger.connect(this.ctx.destination);
+    } else if (this.spatial) {
+      this.master.connect(this.roomIn);
     } else {
       this.master.connect(this.ctx.destination);
     }
@@ -241,6 +282,48 @@ export class Mixer {
     this.changed();
   }
 
+  setSpatial(on: boolean) {
+    this.spatial = on;
+    this.route();
+    this.changed();
+  }
+
+  /** Place the room's speakers and their facing direction. */
+  placeSpeaker(i: 0 | 1, pos: { x: number; y: number; z: number }, facing: { x: number; y: number; z: number }) {
+    const p = this.speakers[i];
+    setVec(p.positionX, p.positionY, p.positionZ, pos.x, pos.y, pos.z);
+    setVec(p.orientationX, p.orientationY, p.orientationZ, facing.x, facing.y, facing.z);
+  }
+
+  /** Move the listener (the player's head). */
+  setListener(pos: { x: number; y: number; z: number }, forward: { x: number; y: number; z: number }) {
+    const l = this.ctx.listener;
+    if (l.positionX) {
+      const t = this.ctx.currentTime;
+      l.positionX.setTargetAtTime(pos.x, t, 0.03);
+      l.positionY.setTargetAtTime(pos.y, t, 0.03);
+      l.positionZ.setTargetAtTime(pos.z, t, 0.03);
+      l.forwardX.setTargetAtTime(forward.x, t, 0.03);
+      l.forwardY.setTargetAtTime(forward.y, t, 0.03);
+      l.forwardZ.setTargetAtTime(forward.z, t, 0.03);
+      l.upX.value = 0;
+      l.upY.value = 1;
+      l.upZ.value = 0;
+    } else {
+      // older Firefox
+      (l as unknown as { setPosition: (x: number, y: number, z: number) => void }).setPosition(pos.x, pos.y, pos.z);
+      (l as unknown as { setOrientation: (...v: number[]) => void }).setOrientation(forward.x, forward.y, forward.z, 0, 1, 0);
+    }
+  }
+
+  /** 0..1 bass energy right now. */
+  bassLevel(): number {
+    const n = this.bassMeter.frequencyBinCount;
+    if (!bassBuf || bassBuf.length !== n) bassBuf = new Uint8Array(n);
+    this.bassMeter.getByteFrequencyData(bassBuf);
+    return (bassBuf[1] + bassBuf[2] + bassBuf[3]) / (3 * 255);
+  }
+
   setCueLevel(v: number) {
     this.cueLevel = v;
     this.applyChannel('A');
@@ -252,6 +335,16 @@ export class Mixer {
   onAir(id: DeckId): boolean {
     const [a, b] = crossfaderGains(this.crossfader, this.curve);
     return faderGain(this.state[id].fader) * (id === 'A' ? a : b) > 0.05;
+  }
+}
+
+let bassBuf: Uint8Array<ArrayBuffer> | null = null;
+
+function setVec(x: AudioParam, y: AudioParam, z: AudioParam, a: number, b: number, c: number) {
+  if (x) {
+    x.value = a;
+    y.value = b;
+    z.value = c;
   }
 }
 
