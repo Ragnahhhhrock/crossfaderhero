@@ -10,6 +10,9 @@ import { PhaseMeter, ScrollingWaveform } from './ui/waveforms';
 import { setUiPaused, usePolled } from './ui/hooks';
 import { RoomView } from './room/RoomView';
 import type { Mode } from './room/Room';
+import { startCoach } from './career/coach';
+import { useCareer } from './career/store';
+import { CareerChip, Coach, LessonsModal, Welcome } from './ui/Career';
 
 interface DeckKeys {
   cue: string;
@@ -130,6 +133,8 @@ function Help({ onClose }: { onClose: () => void }) {
           </tbody>
         </table>
         <p>Crossfader: <kbd>←</kbd> <kbd>→</kbd>, <kbd>↓</kbd> to centre. Knobs and faders: drag, scroll or arrow keys; double-click resets; hold Shift for fine control.</p>
+        <h3>Vinyl mode</h3>
+        <p>Press Vinyl on a deck, then hold the jog wheel to grab the record and drag it back and forth to scratch.</p>
         <h3>How to beatmatch</h3>
         <ol>
           <li>Play deck A with its fader up. Load the next track on deck B with B's fader down.</li>
@@ -137,7 +142,7 @@ function Help({ onClose }: { onClose: () => void }) {
           <li>Start B on a downbeat and watch the phase meter. Nudge with the jog wheel until it turns green.</li>
           <li>Bring B in with the fader or crossfader, swapping the low EQ so the basslines don't clash.</li>
         </ol>
-        <p className="note">Turn on Split cue to hear the cued channel in your left ear and the master in your right.</p>
+        <p className="note">Turn on Split cue to hear the cued channel in your left ear and the master in your right. Open Lessons in the top bar for guided, step-by-step tutorials.</p>
         <button className="primary" onClick={onClose} autoFocus>Done</button>
       </div>
     </div>
@@ -160,6 +165,9 @@ function Toasts() {
 
 export default function App() {
   const [help, setHelp] = useState(false);
+  const [lessonsOpen, setLessonsOpen] = useState(false);
+  const onboarded = useCareer((s) => s.onboarded);
+  const modal = help || lessonsOpen || !onboarded;
   const [zoom, setZoom] = useState(1);
   const [mode, setMode] = useState<Mode>('room');
   setUiPaused(mode === 'room');
@@ -168,10 +176,11 @@ export default function App() {
   const gap = useRef<HTMLDivElement>(null);
   const suspended = usePolled(() => engine.ctx.state !== 'running');
   const nothingLoaded = usePolled(() => !engine.decks.A.loaded && !engine.decks.B.loaded);
-  useKeyboard(() => setHelp((h) => !h), mode === 'booth' && !help && !usbOpen);
+  useKeyboard(() => setHelp((h) => !h), mode === 'booth' && !modal && !usbOpen);
 
   useEffect(() => {
     void useLibrary.getState().init();
+    startCoach();
     const unlock = () => engine.resume();
     window.addEventListener('pointerdown', unlock, { once: true });
     return () => window.removeEventListener('pointerdown', unlock);
@@ -201,18 +210,18 @@ export default function App() {
   // Escape closes the USB drawer before it steps back from the decks
   useEffect(() => {
     const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && usbOpen && !help) {
+      if (e.key === 'Escape' && usbOpen && !modal) {
         e.stopImmediatePropagation();
         setUsbOpen(false);
       }
     };
     window.addEventListener('keydown', esc, true);
     return () => window.removeEventListener('keydown', esc, true);
-  }, [usbOpen, help]);
+  }, [usbOpen, modal]);
 
   return (
     <div className={`app mode-${mode}`}>
-      <RoomView mode={mode} onModeChange={setMode} boothCentre={boothCentre} blockKeys={help || usbOpen} />
+      <RoomView mode={mode} onModeChange={setMode} boothCentre={boothCentre} blockKeys={modal || usbOpen} />
 
       <header className="topbar">
         <div className="brand">
@@ -225,6 +234,7 @@ export default function App() {
           <span className="venue">Your bedroom</span>
         </div>
         <div className="topbar-right">
+          <CareerChip onOpen={() => setLessonsOpen(true)} />
           {suspended && (
             <button className="tiny warn" onClick={() => engine.resume()}>
               Turn on sound
@@ -282,8 +292,11 @@ export default function App() {
         </div>
       </div>
 
+      <Coach onOpenLessons={() => setLessonsOpen(true)} />
       <Toasts />
       {help && <Help onClose={() => setHelp(false)} />}
+      {lessonsOpen && <LessonsModal onClose={() => setLessonsOpen(false)} />}
+      <Welcome />
       <div className="small-screen">Crossfader Hero needs a screen at least 1100 px wide. Open it on a laptop or desktop.</div>
     </div>
   );

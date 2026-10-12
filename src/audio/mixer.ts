@@ -1,4 +1,5 @@
 import type { DeckId } from '../types';
+import { emitAction } from './actions';
 
 export type CrossfaderCurve = 'smooth' | 'sharp';
 export type CueMode = 'off' | 'split';
@@ -261,6 +262,7 @@ export class Mixer {
   setCrossfader(x: number) {
     this.crossfader = Math.max(0, Math.min(1, x));
     this.applyCrossfader();
+    emitAction('crossfader');
     this.changed();
   }
 

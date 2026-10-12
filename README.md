@@ -27,7 +27,18 @@ You start in a small bedroom: a desk against the wall with two media players, a 
 - **Phase meter** between the waveforms shows where each deck sits in its bar and how many milliseconds apart the beats are.
 - **Keyboard:** press `?` in the app for the full map.
 
-Not in phase 1 (see the build plan): key lock / master tempo, scoring, the two career paths, turntables and the battle championships, venues and crowds, the SoundCloud-style platform.
+## Lessons and career progression
+
+- **Beginner mode.** First visit asks if you're new to DJing. Beginner mode runs guided lessons in a coach card that checks your work on the actual decks (no clicking "next") and offers the next lesson when you finish. Toggle it any time in **Lessons** (top bar).
+- **Fundamentals (Bedroom DJ):** meet the decks, cue points, beats/bars/phrases, matching tempo by ear, beatmatching, EQ and the bass swap, your first full mix. Sync is off-limits in these.
+- **Rep and promotions.** Lessons award rep; so do clean practice mixes anywhere (blend in phase ≥ 8 s, then finish on the new track: +20 by hand, +8 with Sync; drifting for 2 s is a trainwreck). Tiers: Bedroom DJ → House-party DJ (150) → Bar resident (400) → Club DJ (800) → Festival headliner (1500).
+- **Unlockable lessons:** loops, filter transitions, harmonic mixing (house party); hot-cue tricks, double drops (bar); scratching 101, beat juggling (club); transformers and combos, main-stage run (festival).
+- **Vinyl mode** (per deck): hold the jog wheel to grab the record and scratch backwards and forwards.
+- Progress is saved in the browser (localStorage).
+
+The lesson ladder is a single rep track for now; it will hang off the two career paths ([docs/CAREER-PATHS.md](docs/CAREER-PATHS.md)) once those are built.
+
+Not yet built (see the build plan): key lock / master tempo, scoring, the two career paths, turntables and the battle championships, venues and crowds, the SoundCloud-style platform.
 
 ## Develop
 
@@ -54,6 +65,7 @@ Every colour, typeface and measurement comes from `src/design/tokens.css`; `npm 
 src/
   audio/      engine (AudioContext), Deck (CDJ transport), Mixer (channels, EQ, filter, crossfader, room speakers), grid maths
   room/       the 3D bedroom (three.js): scene, gear models, procedural textures, first-person view
+  career/     lessons, tiers and rep, the live coach that checks lesson steps and scores practice mixes
   library/    USB folder access + scanning, ID3 tags, BPM/beat-grid/key/waveform analysis, worker
   state/      zustand stores for the library and toasts
   ui/         deck, mixer, browser, waveforms, knobs and faders

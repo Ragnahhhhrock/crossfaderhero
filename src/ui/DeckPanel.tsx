@@ -15,6 +15,7 @@ function JogWheel({ id }: { id: DeckId }) {
   const platter = useRef<HTMLDivElement>(null);
   const drag = useRef<{ angle: number; t: number } | null>(null);
   const settle = useRef<number>(0);
+  const scratchVel = useRef(0);
 
   useAnimationFrame(() => {
     const el = platter.current;
@@ -27,7 +28,17 @@ function JogWheel({ id }: { id: DeckId }) {
   };
 
   const turn = (deg: number, dtMs: number) => {
-    if (deck.playing) {
+    if (deck.scratching) {
+      // hand on the record: audio follows the platter, forwards or backwards
+      const v = ((deg / 360) * SECONDS_PER_REV) / (Math.max(dtMs, 8) / 1000);
+      scratchVel.current = scratchVel.current * 0.4 + v * 0.6;
+      deck.scratchMove(scratchVel.current);
+      clearTimeout(settle.current);
+      settle.current = window.setTimeout(() => {
+        scratchVel.current = 0;
+        deck.scratchMove(0);
+      }, 45);
+    } else if (deck.playing) {
       const revPerSec = deg / 360 / Math.max(dtMs, 8) * 1000;
       deck.setNudge(Math.max(-0.25, Math.min(0.25, revPerSec * 0.12)));
       clearTimeout(settle.current);
@@ -39,12 +50,20 @@ function JogWheel({ id }: { id: DeckId }) {
 
   return (
     <div
-      className={`jog ${deck.playing ? 'is-playing' : ''}`}
+      className={`jog ${deck.playing ? 'is-playing' : ''} ${deck.vinyl ? 'vinyl' : ''} ${deck.scratching ? 'scratching' : ''}`}
       role="group"
-      aria-label={`Deck ${id} jog wheel: drag to nudge while playing, or to search while paused`}
+      aria-label={
+        deck.vinyl
+          ? `Deck ${id} jog wheel, vinyl mode: hold and drag to scratch`
+          : `Deck ${id} jog wheel: drag to nudge while playing, or to search while paused`
+      }
       onPointerDown={(e) => {
         (e.currentTarget as Element).setPointerCapture(e.pointerId);
         drag.current = { angle: angleOf(e), t: performance.now() };
+        if (deck.vinyl && deck.loaded) {
+          scratchVel.current = 0;
+          deck.scratchStart();
+        }
       }}
       onPointerMove={(e) => {
         if (!drag.current) return;
@@ -58,6 +77,13 @@ function JogWheel({ id }: { id: DeckId }) {
       }}
       onPointerUp={() => {
         drag.current = null;
+        clearTimeout(settle.current);
+        if (deck.scratching) deck.scratchEnd();
+        deck.setNudge(0);
+      }}
+      onPointerCancel={() => {
+        drag.current = null;
+        if (deck.scratching) deck.scratchEnd();
         deck.setNudge(0);
       }}
       onWheel={(e) => turn(-Math.sign(e.deltaY) * 6, 16)}
@@ -225,6 +251,14 @@ export function DeckPanel({ id }: { id: DeckId }) {
               title="Quantize: snap cues, loops and jumps to the beat"
             >
               Quantize
+            </button>
+            <button
+              className={`tiny ${deck.vinyl ? 'on' : ''}`}
+              onClick={() => deck.toggleVinyl()}
+              aria-pressed={deck.vinyl}
+              title="Vinyl mode: hold the jog wheel to grab the record and scratch"
+            >
+              Vinyl
             </button>
           </div>
           <button

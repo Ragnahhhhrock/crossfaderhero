@@ -1,5 +1,6 @@
 import type { Analysis, DeckId, Track } from '../types';
 import { beatAt, beatLength, beatTime, quantize, type Grid } from './grid';
+import { emitAction } from './actions';
 
 export type TempoRange = 6 | 10 | 16;
 export const HOT_CUES = 8;
@@ -43,6 +44,16 @@ export class Deck {
   loop: Loop | null = null;
   loopSize = 4; // beats, for auto loop and beat jump
 
+  /** Vinyl mode: the jog grabs the record (scratch) instead of nudging. */
+  vinyl = false;
+  scratching = false;
+  private scratchWasPlaying = false;
+  private scratchRate = 0; // signed track-seconds per second
+  private scratchDir: -1 | 0 | 1 = 0;
+  private lastDir: -1 | 0 | 1 = 0;
+  private reversed: AudioBuffer | null = null;
+  private reversedFor: AudioBuffer | null = null;
+
   /** Remember hot cues per track for the session. */
   private static cueMemory = new Map<string, { cue: number; hot: (number | null)[] }>();
 
@@ -84,6 +95,10 @@ export class Deck {
   }
 
   get position(): number {
+    if (this.scratching) {
+      const p = this.anchorPos + (this.ctx.currentTime - this.anchorCtx) * this.scratchRate;
+      return Math.max(0, Math.min(p, this.duration));
+    }
     if (!this.playing) return this.pausePos;
     let pos = this.anchorPos + (this.ctx.currentTime - this.anchorCtx) * this.rate;
     const l = this.loop;
@@ -110,6 +125,7 @@ export class Deck {
   // ---------- loading ----------
   async load(track: Track, buffer: AudioBuffer, analysis: Analysis) {
     this.stopSource();
+    this.scratching = false;
     this.playing = false;
     this.track = track;
     this.buffer = buffer;
@@ -141,6 +157,7 @@ export class Deck {
   private startSource(pos: number) {
     if (!this.buffer) return;
     this.stopSource();
+    this.scratching = false;
     const src = this.ctx.createBufferSource();
     src.buffer = this.buffer;
     src.playbackRate.value = this.rate;
@@ -190,6 +207,8 @@ export class Deck {
     if (!this.playing) return;
     this.pausePos = this.position;
     this.stopSource();
+    this.scratching = false;
+    this.scratchWasPlaying = false;
     this.playing = false;
     this.changed();
   }
@@ -205,7 +224,12 @@ export class Deck {
     if (!this.buffer) return;
     pos = Math.max(0, Math.min(pos, this.duration - 0.01));
     if (this.loop?.active && (pos < this.loop.start || pos >= this.loop.end)) this.loop = { ...this.loop, active: false };
-    if (this.playing) this.startSource(pos);
+    if (this.scratching) {
+      this.stopSource();
+      this.anchorPos = pos;
+      this.anchorCtx = this.ctx.currentTime;
+      this.scratchDir = 0;
+    } else if (this.playing) this.startSource(pos);
     else this.pausePos = pos;
     this.changed();
   }
@@ -218,6 +242,7 @@ export class Deck {
       this.stopSource();
       this.playing = false;
       this.pausePos = this.cuePoint;
+      emitAction('cueReturn', this.id);
     } else if (!this.playing) {
       const pos = this.pausePos;
       if (Math.abs(pos - this.cuePoint) < 0.005) {
@@ -225,11 +250,13 @@ export class Deck {
         void this.ctx.resume();
         this.startSource(this.cuePoint);
         this.cuePreview = true;
+        emitAction('cuePreview', this.id);
       } else {
         const g = this.grid;
         this.cuePoint = g && this.quantizeOn ? quantize(g, pos) : pos;
         this.pausePos = this.cuePoint;
         this.remember();
+        emitAction('cueSet', this.id);
       }
     }
     this.changed();
@@ -255,9 +282,11 @@ export class Deck {
       const pos = this.position;
       this.hotCues[i] = g && this.quantizeOn ? quantize(g, pos) : pos;
       this.remember();
+      emitAction('hotCueSet', this.id);
       this.changed();
       return;
     }
+    emitAction('hotCueJump', this.id);
     if (this.playing) {
       // jump in phase: keep the fractional beat position so the mix doesn't break
       const g = this.grid;
@@ -294,6 +323,7 @@ export class Deck {
     const end = Math.min(start + len, this.duration);
     this.loop = { start, end, beats, active: true };
     this.loopSize = beats;
+    emitAction('loopSet', this.id);
     if (this.playing) {
       if (pos >= end) this.startSource(start);
       else if (this.source) {
@@ -312,6 +342,7 @@ export class Deck {
       if (this.source) this.source.loop = false;
     }
     this.loop = { ...this.loop, active: false };
+    emitAction('loopExit', this.id);
     this.changed();
   }
 
@@ -328,6 +359,7 @@ export class Deck {
     const g = this.grid;
     if (!g) return;
     const beats = Math.max(1 / 8, Math.min(64, (this.loop?.beats || this.loopSize) * factor));
+    if (this.loop?.active) emitAction(factor < 1 ? 'loopHalve' : 'loopDouble', this.id);
     this.loopSize = beats;
     if (this.loop?.active) {
       const pos = this.position;
@@ -345,6 +377,7 @@ export class Deck {
     const g = this.grid;
     if (!g || !this.buffer) return;
     const delta = beatLength(g) * beats;
+    emitAction('beatJump', this.id);
     if (this.loop?.active) {
       // move the loop with the playhead, like a CDJ
       this.loop = { ...this.loop, start: this.loop.start + delta, end: this.loop.end + delta };
@@ -416,6 +449,7 @@ export class Deck {
       else return false;
     }
     this.setTempo(target);
+    emitAction('sync', this.id);
     const g = this.grid;
     const og = other.grid;
     if (this.playing && other.playing && g && og) {
@@ -445,8 +479,93 @@ export class Deck {
     return a;
   }
 
+  // ---------- vinyl mode / scratching ----------
+  toggleVinyl() {
+    if (this.vinyl && this.scratching) this.scratchEnd();
+    this.vinyl = !this.vinyl;
+    this.changed();
+  }
+
+  /** Hand on the record: it stops under your fingers. */
+  scratchStart() {
+    if (!this.buffer || this.scratching) return;
+    void this.ctx.resume();
+    const pos = this.position;
+    this.scratchWasPlaying = this.playing;
+    this.stopSource();
+    this.scratching = true;
+    this.scratchDir = 0;
+    this.lastDir = 0;
+    this.scratchRate = 0;
+    this.anchorPos = pos;
+    this.anchorCtx = this.ctx.currentTime;
+    this.changed();
+  }
+
+  /** Move the record: `rate` in track-seconds per second (1 = normal speed, negative = backwards). */
+  scratchMove(rate: number) {
+    if (!this.scratching || !this.buffer) return;
+    rate = Math.max(-4, Math.min(4, rate));
+    const pos = this.position;
+    this.anchorPos = pos;
+    this.anchorCtx = this.ctx.currentTime;
+    const dir: -1 | 0 | 1 = Math.abs(rate) < 0.03 ? 0 : rate > 0 ? 1 : -1;
+    if (dir !== 0 && this.lastDir !== 0 && dir !== this.lastDir) emitAction('scratchFlip', this.id);
+    if (dir !== 0) this.lastDir = dir;
+    this.scratchRate = dir === 0 ? 0 : rate;
+    if (dir === 0) {
+      this.stopSource();
+      this.scratchDir = 0;
+      return;
+    }
+    if (dir !== this.scratchDir || !this.source) {
+      const buf = dir > 0 ? this.buffer : this.reversedBuffer();
+      this.stopSource();
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = Math.abs(rate);
+      src.connect(this.output);
+      const offset = dir > 0 ? pos : this.duration - pos;
+      src.start(0, Math.max(0, Math.min(offset, this.duration - 0.001)));
+      this.source = src;
+    } else {
+      this.source.playbackRate.setTargetAtTime(Math.abs(rate), this.ctx.currentTime, 0.01);
+    }
+    this.scratchDir = dir;
+  }
+
+  /** Let go of the record: it carries on if it was playing. */
+  scratchEnd() {
+    if (!this.scratching) return;
+    const pos = this.position;
+    this.stopSource();
+    this.scratching = false;
+    this.lastDir = 0;
+    if (this.scratchWasPlaying) this.startSource(pos);
+    else {
+      this.playing = false;
+      this.pausePos = pos;
+    }
+    this.changed();
+  }
+
+  private reversedBuffer(): AudioBuffer {
+    const b = this.buffer!;
+    if (this.reversed && this.reversedFor === b) return this.reversed;
+    const r = this.ctx.createBuffer(b.numberOfChannels, b.length, b.sampleRate);
+    for (let ch = 0; ch < b.numberOfChannels; ch++) {
+      const src = b.getChannelData(ch);
+      const dst = r.getChannelData(ch);
+      for (let i = 0, n = src.length; i < n; i++) dst[i] = src[n - 1 - i];
+    }
+    this.reversed = r;
+    this.reversedFor = b;
+    return r;
+  }
+
   eject() {
     this.stopSource();
+    this.scratching = false;
     this.playing = false;
     this.track = null;
     this.buffer = null;
