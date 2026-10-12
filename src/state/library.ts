@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Analysis, DeckId, Track } from '../types';
 import { readTags } from '../library/id3';
+import { track } from '../analytics/ga';
 import { decodeForAnalysis, analyzeBuffer, getCachedAnalysis, saveAnalysis } from '../library/analysisService';
 import {
   hasPermission,
@@ -169,6 +170,7 @@ export const useLibrary = create<LibraryState>((setState, getState) => {
       }
       const folders = [...current, folder];
       patchSlot(slot, { folders });
+      track('usb_folder_added', { deck: slot, folder_access: supportsFolderAccess ? 'native' : 'fallback', folder_count: folders.length });
       await saveSlot(slot, folders);
       await scan(slot);
     },

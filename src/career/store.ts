@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { lessonById, LESSONS } from './lessons';
 import { tierFor } from './rules';
+import { track } from '../analytics/ga';
 
 interface CareerState {
   rep: number;
@@ -40,15 +41,24 @@ export const useCareer = create<CareerState>()(
       finishOnboarding: (beginner) => set({ beginner, onboarded: true }),
       start: (id) => {
         const l = lessonById(id);
-        if (l && l.tier <= tierFor(get().rep).id) set({ active: id, step: 0 });
+        if (l && l.tier <= tierFor(get().rep).id) {
+          set({ active: id, step: 0 });
+          track('tutorial_begin', { lesson_id: l.id, lesson_name: l.title, beginner_mode: get().beginner ? 'on' : 'off' });
+        }
       },
-      stop: () => set({ active: null, step: 0 }),
+      stop: () => {
+        const { active, step } = get();
+        const l = active ? lessonById(active) : null;
+        if (l) track('lesson_abandon', { lesson_id: l.id, lesson_name: l.title, step: step + 1 });
+        set({ active: null, step: 0 });
+      },
       advance: () => {
         const { active, step, completed, rep } = get();
         const l = active ? lessonById(active) : null;
         if (!l) return;
         if (step + 1 < l.steps.length) return set({ step: step + 1 });
         const first = !completed.includes(l.id);
+        track('tutorial_complete', { lesson_id: l.id, lesson_name: l.title, first_time: first ? 'yes' : 'no' });
         set({
           active: null,
           step: 0,

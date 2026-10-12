@@ -8,6 +8,8 @@ import type { DeckId } from '../types';
 import { LESSONS, lessonById } from './lessons';
 import { emptyCounters, MIX_REP, MixMonitor, tierFor, xfOpen, type DeckSnap, type Snap } from './rules';
 import { useCareer } from './store';
+import { track } from '../analytics/ga';
+import { session } from '../analytics/session';
 
 /** Live coach state for the UI. */
 interface CoachUi {
@@ -143,11 +145,15 @@ export function startCoach() {
     const mix = monitor.update(s, dt);
     if (mix === 'trainwreck') {
       counters.trainwrecks++;
+      session.trainwrecks++;
+      track('mix_trainwreck');
       toast('Trainwreck! The beats drifted apart during the blend.', 'warn');
     } else if (mix) {
       counters.mixes++;
       if (!mix.synced) counters.manualMixes++;
       const rep = mix.synced ? MIX_REP.synced : MIX_REP.manual;
+      session.cleanMixes++;
+      track('mix_complete', { method: mix.synced ? 'sync' : 'manual', rep, in_lesson: career.active ? 'yes' : 'no' });
       career.noteMix();
       career.addRep(rep);
       toast(mix.synced ? `Clean mix (with Sync): +${rep} rep` : `Clean mix by hand: +${rep} rep`);

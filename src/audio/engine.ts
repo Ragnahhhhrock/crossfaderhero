@@ -3,6 +3,8 @@ import { Deck } from './deck';
 import { Mixer } from './mixer';
 import { analyzeBuffer } from '../library/analysisService';
 import { useLibrary } from '../state/library';
+import { track as gaTrack } from '../analytics/ga';
+import { genreOf, session } from '../analytics/session';
 
 export class Engine {
   readonly ctx: AudioContext;
@@ -28,7 +30,10 @@ export class Engine {
   /** Load a track onto a deck. Refuses if the deck is playing on air, like a real CDJ booth rule. */
   async loadTrack(id: DeckId, track: Track): Promise<{ ok: boolean; reason?: string }> {
     const deck = this.decks[id];
-    if (deck.playing && this.mixer.onAir(id)) return { ok: false, reason: `Deck ${id} is playing on air — pause it or pull its fader down first.` };
+    if (deck.playing && this.mixer.onAir(id)) {
+      gaTrack('track_load_failed', { deck: id, error_type: 'on_air' });
+      return { ok: false, reason: `Deck ${id} is playing on air — pause it or pull its fader down first.` };
+    }
     if (deck.loading) return { ok: false, reason: `Deck ${id} is still loading.` };
     this.resume();
     deck.setLoading(true);
@@ -43,8 +48,17 @@ export class Engine {
       }
       if (deck.playing) deck.pause();
       await deck.load({ ...track, analysis, analysisState: 'done' }, buffer, analysis);
+      session.tracksLoaded++;
+      gaTrack('track_load', {
+        deck: id,
+        genre: genreOf(track.meta.genre),
+        bpm: Math.round(analysis.bpm),
+        camelot: analysis.camelot,
+        length_min: Math.round(analysis.duration / 6) / 10,
+      });
       return { ok: true };
     } catch (e) {
+      gaTrack('track_load_failed', { deck: id, error_type: (e as Error).name === 'EncodingError' ? 'decode' : 'read' });
       return { ok: false, reason: `Couldn't load "${track.meta.title}": ${(e as Error).message}` };
     } finally {
       deck.setLoading(false);

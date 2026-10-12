@@ -18,7 +18,9 @@ export type ActionType =
   | 'beatJump'
   | 'sync'
   | 'scratchFlip'
-  | 'crossfader';
+  | 'crossfader'
+  | 'play'
+  | 'trackEnd';
 
 export interface Action {
   type: ActionType;

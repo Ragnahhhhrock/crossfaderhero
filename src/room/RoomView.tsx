@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { engine } from '../audio/engine';
 import { toast } from '../state/toasts';
+import { track } from '../analytics/ga';
 import type { Action } from './models';
 import { Room, type Mode } from './Room';
 
@@ -54,7 +55,8 @@ export function RoomView({ mode, onModeChange, boothCentre, blockKeys }: Props) 
     try {
       if (new URLSearchParams(location.search).has('no3d')) throw new Error('3D disabled');
       room = new Room(c);
-    } catch {
+    } catch (e) {
+      track('room_3d_unavailable', { reason: (e as Error)?.message === '3D disabled' ? 'no3d_param' : 'webgl_unavailable' });
       setFailed(true);
       onModeChange('booth');
       return;

@@ -13,6 +13,26 @@
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <link rel="canonical" href="https://crossfaderhero.com/" />
 
+    <!-- Google tag (GA4) via Google tag gateway: gtag.js and its hits go through
+         crossfaderhero.com/k7q2m (see worker/index.js). Only loads on the live site;
+         add ?ga_debug to a URL to see events in GA4 DebugView. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      (function () {
+        var live = /(^|\.)crossfaderhero\.com$/.test(location.hostname);
+        if (!live) return;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = '/k7q2m/?id=G-R8RG80E41X';
+        document.head.appendChild(s);
+        gtag('js', new Date());
+        var cfg = {};
+        if (/[?&]ga_debug\b/.test(location.search)) cfg.debug_mode = true;
+        gtag('config', 'G-R8RG80E41X', cfg);
+      })();
+    </script>
+
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

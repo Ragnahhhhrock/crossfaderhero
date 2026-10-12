@@ -173,6 +173,7 @@ export class Deck {
       this.playing = false;
       this.pausePos = this.duration;
       this.changed();
+      emitAction('trackEnd', this.id);
     };
     src.start(0, Math.max(0, Math.min(pos, this.duration - 0.001)));
     this.source = src;
@@ -201,6 +202,7 @@ export class Deck {
     if (this.pausePos >= this.duration - 0.01) this.pausePos = this.cuePoint;
     this.startSource(this.pausePos);
     this.changed();
+    emitAction('play', this.id);
   }
 
   pause() {

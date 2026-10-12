@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { startAnalytics } from './analytics/events';
+import { track } from './analytics/ga';
 import { engine } from './audio/engine';
 import { useLibrary } from './state/library';
 import { useToasts } from './state/toasts';
@@ -179,12 +181,20 @@ export default function App() {
   useKeyboard(() => setHelp((h) => !h), mode === 'booth' && !modal && !usbOpen);
 
   useEffect(() => {
+    startAnalytics();
     void useLibrary.getState().init();
     startCoach();
     const unlock = () => engine.resume();
     window.addEventListener('pointerdown', unlock, { once: true });
     return () => window.removeEventListener('pointerdown', unlock);
   }, []);
+
+  // analytics: stepping up to / back from the decks
+  const firstMode = useRef(true);
+  useEffect(() => {
+    if (firstMode.current) return void (firstMode.current = false);
+    track('view_change', { view: mode });
+  }, [mode]);
 
   // open the USB browser on the first visit to the decks
   useEffect(() => {

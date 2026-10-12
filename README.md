@@ -55,6 +55,12 @@ Requires Node 18+. Use Chrome or Edge on desktop for the full folder-access expe
 
 **Live at https://crossfaderhero.com.** The `crossfaderhero` Cloudflare Worker is connected to this repo with Workers Builds: every push to `main` runs `npm run build` then `npx wrangler deploy` (static assets from `dist/`, see `wrangler.jsonc`). Pull-request branches get preview builds.
 
+## Analytics
+
+GA4 (`G-R8RG80E41X`) loads through **Google tag gateway**: `worker/index.js` proxies `/k7q2m/*` on crossfaderhero.com to Google, so the tag and its hits are first-party. Health checks: `/k7q2m/healthy` and `/k7q2m/?validate_geo=healthy` return `ok`. The tag only loads on crossfaderhero.com (not dev or preview builds); add `?ga_debug` to see events in GA4 DebugView.
+
+Gameplay events (track loads/plays/finishes, mixes, lessons, promotions, feature use, a per-session summary) are wired in `src/analytics/` — the full list is at the top of `src/analytics/events.ts`. No track titles, artists or file names are ever sent.
+
 ## Brand and design system
 
 Every colour, typeface and measurement comes from `src/design/tokens.css`; `npm test` fails if anything else hard-codes one. The guide is `docs/STYLEGUIDE.md` and live at https://crossfaderhero.com/brand. After changing tokens, regenerate the favicon, icons and social images with `npm run build && npm run brand` (needs `npx playwright install chromium` once).
