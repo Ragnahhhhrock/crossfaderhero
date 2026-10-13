@@ -23,6 +23,8 @@ export interface TrackMeta {
   artist: string;
   album: string;
   genre: string;
+  /** Release year from the tags, if any — used to sort records by period. */
+  year?: number;
   tagBpm?: number;
   tagKey?: string;
   artwork?: { mime: string; data: Uint8Array };

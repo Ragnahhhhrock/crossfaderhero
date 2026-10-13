@@ -8,6 +8,9 @@
  * Events (custom unless noted):
  *   usb_folder_added      deck, folder_access (native|fallback), folder_count  (sent from state/library.ts)
  *   crate_added           deck=crate, folder_access, folder_count        (sent from state/library.ts)
+ *   usb_drive_created     capacity_gb — a sorted USB drive made in the organiser (state/collection.ts)
+ *   crate_labelled        by (genre|artist|period|category) — a labelled crate made (state/collection.ts)
+ *   crates_auto_sorted    by, crates — auto-sort into one crate per label (state/collection.ts)
  *   record_load           deck, genre, bpm, camelot — a record put on a turntable (sent from engine.ts)
  *   gear_choice           gear (cdj|vinyl|both), first_time             (sent from state/setup.ts)
  *   usb_access_restored   deck

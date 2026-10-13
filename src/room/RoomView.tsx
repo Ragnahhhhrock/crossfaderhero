@@ -6,6 +6,8 @@ import type { Action } from './models';
 import { Room, type Mode } from './Room';
 import type { Gear } from '../state/setup';
 import { useLibrary } from '../state/library';
+import { useCollection } from '../state/collection';
+import { poolTracks, resolve } from '../library/sorting';
 
 interface Props {
   mode: Mode;
@@ -129,20 +131,33 @@ export function RoomView({ mode, onModeChange, boothCentre, blockKeys, gear, onO
   useEffect(() => {
     let timer = 0;
     let last: unknown = null;
+    let lastLabelled: unknown = null;
+    let lastSlots: unknown = null;
     const sync = () => {
-      const slot = useLibrary.getState().slots.crate;
-      if (slot.tracks === last) return;
+      const { slots } = useLibrary.getState();
+      const slot = slots.crate;
+      const labelled = useCollection.getState().crates;
+      if (slot.tracks === last && labelled === lastLabelled && (!labelled.length || slots === lastSlots)) return;
       last = slot.tracks;
+      lastLabelled = labelled;
+      lastSlots = slots;
       clearTimeout(timer);
       timer = window.setTimeout(() => {
-        const crates = slot.folders.map((f, i) => ({ name: f.name, tracks: slot.tracks.filter((t) => t.folder === i) }));
+        const byKey = new Map(poolTracks(useLibrary.getState().slots).map((t) => [t.key, t]));
+        // labelled crates first (they're the ones you sorted), then one per crate folder
+        const crates = [
+          ...useCollection.getState().crates.map((c) => ({ name: c.name, tracks: resolve(c.keys, byKey) })).filter((c) => c.tracks.length),
+          ...slot.folders.map((f, i) => ({ name: f.name, tracks: slot.tracks.filter((t) => t.folder === i) })),
+        ];
         roomRef.current?.setCrates(crates);
       }, slot.status === 'scanning' ? 1500 : 300);
     };
     sync();
     const unsub = useLibrary.subscribe(sync);
+    const unsubC = useCollection.subscribe(sync);
     return () => {
       unsub();
+      unsubC();
       clearTimeout(timer);
     };
   }, []);

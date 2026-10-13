@@ -52,6 +52,13 @@ At the start you choose what's on the desk (change it any time with **Gear** in 
 
 **Record crates.** "Choose a folder for a crate" turns a folder of MP3s into a crate of vinyl records: each track gets a sleeve (its cover art, or a generated design), a centre label, and its BPM and key marked on the corner once it's been pressed (analysed). Each folder is its own crate, shown on the floor of the bedroom — click one to open it. Flip through, sort by BPM, key, title, artist or genre, pull a record out and put it on turntable A or B (double-click puts it on a free one). The same record on both decks makes a double for beat juggling.
 
+**Sort your music** (**Sort into USBs** in the USB browser, **Sort into crates** in the record crates). Every track from every folder you've plugged in is one collection; sort it into:
+
+- **USB drives** for the CDJs — as many as you like (Warm-up, Peak time, Back-up…), each a stick of 8–128 GB with a fill gauge; copying stops when it's full. Each drive gets its own tab in the USB browser, next to USB A / B.
+- **Labelled crates** for the turntables — labelled by **genre**, **artist**, **period** (decade, from the year tag) or your own **category** (Battle tools, Warm-up…). **Auto-sort** makes one crate per genre, artist or decade in one go; a crate labelled with a genre/artist/period offers to pull in every matching record. Labelled crates show as tabs in the crates panel and stand on the bedroom floor.
+
+Tick tracks (filter by genre/artist/period, or "Not sorted yet") and add them, or drag them onto a drive or crate. A track can live in several places; deleting a drive or crate never touches your files. The sorting is saved in the browser and comes back when the folders are plugged in again. Code: `src/library/sorting.ts`, `src/state/collection.ts`, `src/ui/Organizer.tsx`.
+
 **Turntables** — simulated in an AudioWorklet that reads the record sample by sample at whatever speed the platter physics gives it:
 
 - Start/Stop with real spin-up and electronic brake (both adjustable), and a power switch for the slow power-down.

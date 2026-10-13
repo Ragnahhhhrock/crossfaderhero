@@ -7,6 +7,9 @@ import type { DeckId, Track } from '../types';
 import { formatTime, useMixer, useTurntable } from './hooks';
 import { useSetup } from '../state/setup';
 import { ScanProgress } from './ScanProgress';
+import { Organizer } from './Organizer';
+import { useCollection } from '../state/collection';
+import { CRATE_BY, CRATE_HOLDS, poolTracks, resolve } from '../library/sorting';
 
 type SortKey = 'title' | 'artist' | 'bpm' | 'key' | 'genre';
 
@@ -78,8 +81,9 @@ function Sleeve({ t, selected, onSelect, onPlay }: { t: Track; selected: boolean
   );
 }
 
-function CrateEmpty() {
+function CrateEmpty({ onSort }: { onSort: () => void }) {
   const insert = useLibrary((s) => s.insertFolder);
+  const haveMusic = useLibrary((s) => s.slots.A.tracks.length + s.slots.B.tracks.length > 0);
   return (
     <div className="usb-empty">
       <h2>Fill a record crate</h2>
@@ -87,7 +91,10 @@ function CrateEmpty() {
         Choose a folder of MP3s. Every track is pressed to its own vinyl record — cover art on the sleeve, the BPM and key
         marked on the corner — and stacked in a crate next to the decks. Each folder becomes a crate. Music never leaves your computer.
       </p>
-      <button className="primary" onClick={() => insert('crate')}>Choose a folder for a crate</button>
+      <div className="row">
+        <button className="primary" onClick={() => insert('crate')}>Choose a folder for a crate</button>
+        {haveMusic && <button onClick={onSort}>Sort your USB music into crates</button>}
+      </div>
       {!supportsFolderAccess && <p className="note">This browser can't remember folders, so you'll fill the crates again each visit. Chrome or Edge on a desktop remembers them.</p>}
     </div>
   );
@@ -155,7 +162,16 @@ export function Crates() {
   const slot = useLibrary((s) => s.slots.crate);
   const analysing = useLibrary((s) => s.analysing);
   const { insertFolder, removeFolder } = useLibrary.getState();
-  const [crate, setCrate] = useState<number | 'all'>('all');
+  /** 'all', a folder crate's index, or the id of a labelled crate. */
+  const [crate, setCrate] = useState<number | 'all' | string>('all');
+  const [sorting, setSorting] = useState(false);
+  const labelled = useCollection((c) => c.crates);
+  const libSlots = useLibrary((s) => s.slots);
+  const byKey = useMemo(() => new Map(poolTracks(libSlots).map((t) => [t.key, t])), [libSlots]);
+  const sortedCrate = typeof crate === 'string' && crate !== 'all' ? labelled.find((c) => c.id === crate) : undefined;
+  useEffect(() => {
+    if (typeof crate === 'string' && crate !== 'all' && !sortedCrate) setCrate('all');
+  }, [crate, sortedCrate]);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('bpm');
   const [pulled, setPulled] = useState<string | null>(null);
@@ -170,18 +186,23 @@ export function Crates() {
 
   const records = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = slot.tracks.filter(
-      (t) => (crate === 'all' || t.folder === crate) && (!q || `${t.meta.title} ${t.meta.artist} ${t.meta.genre}`.toLowerCase().includes(q)),
-    );
+    let base: Track[];
+    if (sortedCrate) base = resolve(sortedCrate.keys, byKey);
+    else if (crate === 'all') {
+      // every folder crate plus every labelled crate, each record once
+      const seen = new Set<string>();
+      base = [...slot.tracks, ...labelled.flatMap((c) => resolve(c.keys, byKey))].filter((t) => !seen.has(t.key) && (seen.add(t.key), true));
+    } else base = slot.tracks.filter((t) => t.folder === crate);
+    const list = base.filter((t) => !q || `${t.meta.title} ${t.meta.artist} ${t.meta.genre} ${t.meta.year ?? ''}`.toLowerCase().includes(q));
     list.sort((a, b) => {
       const va = sortValue(a, sort);
       const vb = sortValue(b, sort);
       return va < vb ? -1 : va > vb ? 1 : 0;
     });
     return list;
-  }, [slot.tracks, crate, query, sort]);
+  }, [slot.tracks, crate, query, sort, sortedCrate, labelled, byKey]);
 
-  const pulledTrack = pulled ? slot.tracks.find((t) => t.key === pulled) ?? null : null;
+  const pulledTrack = pulled ? byKey.get(pulled) ?? null : null;
   const pressingCount = slot.tracks.filter((t) => !t.analysis && t.analysisState !== 'error').length;
 
   // a quick double-click puts it on whichever turntable isn't playing on air
@@ -194,13 +215,13 @@ export function Crates() {
     <section className="browser crates" aria-label="Record crates">
       <div className="browser-bar">
         <div className="tabs" role="tablist">
-          {slot.folders.length > 1 && (
+          {slot.folders.length + labelled.length > 1 && (
             <button role="tab" aria-selected={crate === 'all'} className={`tab ${crate === 'all' ? 'on' : ''}`} onClick={() => setCrate('all')}>
-              All crates <span className="count">{slot.tracks.length}</span>
+              All crates
             </button>
           )}
           {slot.folders.map((f, i) => (
-            <span key={`${f.name}-${i}`} className={`tab crate-tab ${crate === i || (crate === 'all' && slot.folders.length === 1) ? 'on' : ''}`}>
+            <span key={`${f.name}-${i}`} className={`tab crate-tab ${crate === i || (crate === 'all' && slot.folders.length === 1 && !labelled.length) ? 'on' : ''}`}>
               <button role="tab" aria-selected={crate === i} onClick={() => setCrate(i)}>
                 {f.name} <span className="count">{counts[i] ?? 0}</span>
               </button>
@@ -216,8 +237,27 @@ export function Crates() {
               </button>
             </span>
           ))}
+          {labelled.map((c) => {
+            const n = resolve(c.keys, byKey).length;
+            return (
+              <button
+                key={c.id}
+                role="tab"
+                aria-selected={crate === c.id}
+                className={`tab crate-tab labelled ${crate === c.id ? 'on' : ''}`}
+                onClick={() => setCrate(c.id)}
+                title={`${CRATE_BY.find((b) => b.id === c.by)!.label} crate${c.keys.length > CRATE_HOLDS ? ' — overflowing' : ''}`}
+              >
+                <span className={`crate-by by-${c.by}`}>{CRATE_BY.find((b) => b.id === c.by)!.label}</span>
+                {c.name} <span className="count">{n}</span>
+              </button>
+            );
+          })}
         </div>
-        {slot.status !== 'empty' && slot.status !== 'locked' && (
+        <button className="tiny" onClick={() => setSorting(true)} title="Label crates by genre, artist, period or category and sort records into them">
+          Sort into crates
+        </button>
+        {slot.status !== 'locked' && (slot.status !== 'empty' || labelled.length > 0) && (
           <button className="tiny" onClick={() => insertFolder('crate')}>New crate from folder</button>
         )}
         <select className="tiny sort" value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort records">
@@ -241,15 +281,16 @@ export function Crates() {
         </span>
       </div>
 
-      {slot.status === 'empty' ? (
-        <CrateEmpty />
-      ) : slot.status === 'locked' ? (
+      {sorting && <Organizer start="crate" onClose={() => setSorting(false)} />}
+      {slot.status === 'empty' && !labelled.length ? (
+        <CrateEmpty onSort={() => setSorting(true)} />
+      ) : slot.status === 'locked' && !labelled.length ? (
         <CrateLocked />
       ) : (
         <div className="crate-body">
           <div className="crate-records" role="list">
             {records.length === 0 && slot.status === 'ready' && (
-              <p className="empty-rows">{query ? 'No records match that search.' : 'No MP3s in this folder. Make a crate from another folder.'}</p>
+              <p className="empty-rows">{query ? 'No records match that search.' : sortedCrate ? (sortedCrate.keys.length ? 'Its records’ folders aren’t plugged in this session.' : 'This crate is empty — use Sort into crates to fill it.') : 'No MP3s in this folder. Make a crate from another folder.'}</p>
             )}
             {records.map((t) => (
               <Sleeve key={t.key} t={t} selected={pulled === t.key} onSelect={() => setPulled(t.key === pulled ? null : t.key)} onPlay={() => quickPut(t)} />

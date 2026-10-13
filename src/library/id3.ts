@@ -49,6 +49,14 @@ function genreName(raw: string): string {
   return raw;
 }
 
+/** "1997", "1997-05-01", "1997/98" → 1997 (a plausible release year), else undefined. */
+export function parseYear(raw: string): number | undefined {
+  const m = /(19|20)\d\d/.exec(raw);
+  if (!m) return undefined;
+  const y = Number(m[0]);
+  return y >= 1900 && y <= 2100 ? y : undefined;
+}
+
 function syncsafe(b: Uint8Array, o: number): number {
   return ((b[o] & 0x7f) << 21) | ((b[o + 1] & 0x7f) << 14) | ((b[o + 2] & 0x7f) << 7) | (b[o + 3] & 0x7f);
 }
@@ -109,6 +117,11 @@ export function parseId3v2(tag: Uint8Array): Partial<TrackMeta> {
         break;
       }
       case 'TKEY': case 'TKE': out.tagKey = decodeText(data); break;
+      case 'TYER': case 'TYE': case 'TDRC': case 'TDOR': case 'TORY': {
+        const y = parseYear(decodeText(data));
+        if (y && (!out.year || id === 'TDOR' || id === 'TORY')) out.year = y;
+        break;
+      }
       case 'APIC': case 'PIC': {
         if (out.artwork) break;
         const enc = data[0];
@@ -152,6 +165,7 @@ export function parseId3v1(tail: Uint8Array): Partial<TrackMeta> {
     artist: str(33, 63) || undefined,
     album: str(63, 93) || undefined,
     genre: V1_GENRES[t[127]],
+    year: parseYear(str(93, 97)),
   };
 }
 
@@ -174,7 +188,7 @@ export async function readTags(file: File): Promise<TrackMeta> {
     v2 = parseId3v2(tag);
   }
   let v1: Partial<TrackMeta> = {};
-  if (!v2.title || !v2.artist) {
+  if (!v2.title || !v2.artist || !v2.year) {
     v1 = parseId3v1(new Uint8Array(await file.slice(Math.max(0, file.size - 128)).arrayBuffer()));
   }
   const fromName = metaFromFilename(file.name);
@@ -183,6 +197,7 @@ export async function readTags(file: File): Promise<TrackMeta> {
     artist: v2.artist || v1.artist || fromName.artist,
     album: v2.album || v1.album || '',
     genre: v2.genre || v1.genre || '',
+    year: v2.year ?? v1.year,
     tagBpm: v2.tagBpm,
     tagKey: v2.tagKey,
     artwork: v2.artwork,

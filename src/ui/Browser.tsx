@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { engine } from '../audio/engine';
 import { supportsFolderAccess, useLibrary } from '../state/library';
 import { toast } from '../state/toasts';
 import type { DeckId, Track } from '../types';
 import { formatTime, useDeck } from './hooks';
 import { ScanProgress } from './ScanProgress';
+import { Organizer } from './Organizer';
+import { useCollection } from '../state/collection';
+import { bytesUsed, formatBytes, poolTracks, resolve } from '../library/sorting';
 
 type SortKey = 'title' | 'artist' | 'bpm' | 'key' | 'genre' | 'time';
 const ROW = 34;
@@ -65,7 +68,12 @@ function UsbLocked({ slot }: { slot: DeckId }) {
 }
 
 export function Browser() {
-  const [slot, setSlot] = useState<DeckId>('A');
+  /** USB A / B (folders), or the id of one of your sorted USB drives. */
+  const [tab, setTab] = useState<string>('A');
+  const [sorting, setSorting] = useState(false);
+  const usbs = useCollection((c) => c.usbs);
+  const drive = usbs.find((u) => u.id === tab);
+  const slot: DeckId = tab === 'B' ? 'B' : 'A';
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'title', dir: 1 });
   const [scrollTop, setScrollTop] = useState(0);
@@ -75,7 +83,14 @@ export function Browser() {
   const analysing = useLibrary((s) => s.analysing);
   const queued = useLibrary((s) => s.queued);
   const { insertFolder, eject, removeFolder } = useLibrary.getState();
-  const s = slots[slot];
+  const folderSlot = slots[slot];
+  const pool = useMemo(() => poolTracks(slots), [slots]);
+  const driveTracks = useMemo(() => (drive ? resolve(drive.keys, new Map(pool.map((t) => [t.key, t]))) : []), [drive, pool]);
+  // a sorted drive reads like a USB that's always plugged in
+  const s = drive ? { ...folderSlot, status: 'ready' as const, tracks: driveTracks, found: driveTracks.length } : folderSlot;
+  useEffect(() => {
+    if (tab !== 'A' && tab !== 'B' && !drive) setTab('A');
+  }, [tab, drive]);
   useDeck('A');
   useDeck('B');
 
@@ -119,13 +134,37 @@ export function Browser() {
       <div className="browser-bar">
         <div className="tabs" role="tablist">
           {(['A', 'B'] as DeckId[]).map((id) => (
-            <button key={id} role="tab" aria-selected={slot === id} className={`tab tab-${id.toLowerCase()} ${slot === id ? 'on' : ''}`} onClick={() => setSlot(id)}>
+            <button key={id} role="tab" aria-selected={tab === id} className={`tab tab-${id.toLowerCase()} ${tab === id ? 'on' : ''}`} onClick={() => setTab(id)}>
               USB {id}
               <span className="count">{slots[id].status === 'empty' ? 'empty' : slots[id].found}</span>
             </button>
           ))}
+          {usbs.map((u) => (
+            <button
+              key={u.id}
+              role="tab"
+              aria-selected={tab === u.id}
+              className={`tab tab-usb ${tab === u.id ? 'on' : ''}`}
+              style={{ '--accent': `var(--${u.colour})` } as CSSProperties}
+              onClick={() => setTab(u.id)}
+              title={`Sorted USB drive “${u.name}”`}
+            >
+              <i className="usb-dot" />
+              {u.name}
+              <span className="count">{u.keys.length}</span>
+            </button>
+          ))}
         </div>
-        {s.status !== 'empty' && s.status !== 'locked' && (
+        <button className="tiny" onClick={() => setSorting(true)} title="Sort your music into USB drives and record crates">
+          Sort into USBs
+        </button>
+        {drive && (
+          <span className="drive-size">
+            {formatBytes(bytesUsed(driveTracks))} of {drive.capacityGb} GB
+            {driveTracks.length < drive.keys.length ? ` · ${drive.keys.length - driveTracks.length} not plugged in` : ''}
+          </span>
+        )}
+        {!drive && s.status !== 'empty' && s.status !== 'locked' && (
           <div className="folders">
             {s.folders.map((f, i) => (
               <span className="folder-chip" key={`${f.name}-${i}`}>
@@ -151,7 +190,14 @@ export function Browser() {
         </span>
       </div>
 
-      {s.status === 'empty' ? (
+      {sorting && <Organizer start="usb" onClose={() => setSorting(false)} />}
+      {drive && driveTracks.length === 0 ? (
+        <div className="usb-empty">
+          <h2>“{drive.name}” is empty</h2>
+          <p>{drive.keys.length ? 'Its folders aren’t plugged in this session — choose them on USB A or B first.' : 'Copy some tracks onto it.'}</p>
+          <button className="primary" onClick={() => setSorting(true)}>Sort into USBs</button>
+        </div>
+      ) : s.status === 'empty' ? (
         <UsbEmpty slot={slot} />
       ) : s.status === 'locked' ? (
         <UsbLocked slot={slot} />
@@ -173,7 +219,7 @@ export function Browser() {
             onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
           >
             {rows.length === 0 && s.status === 'ready' && (
-              <p className="empty-rows">{query ? 'No tracks match that search.' : 'No MP3 files in this folder. Add another folder to this USB.'}</p>
+              <p className="empty-rows">{query ? 'No tracks match that search.' : drive ? 'Nothing on this drive yet.' : 'No MP3 files in this folder. Add another folder to this USB.'}</p>
             )}
             <div style={{ height: rows.length * ROW, position: 'relative' }}>
               {rows.slice(first, last).map((t, i) => {
