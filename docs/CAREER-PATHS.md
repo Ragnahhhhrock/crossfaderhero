@@ -6,7 +6,7 @@ Every career starts in the same bedroom. The first big choice is which kind of D
 |---|---|---|
 | Fantasy | Headline a major festival in a packed stadium | Be crowned the best DJ in the world |
 | You start as | A bedroom DJ | A bedroom turntablist |
-| Gear | Two CDJs + mixer (Phase 1 decks) | Two turntables + battle mixer (new) |
+| Gear | Two CDJs + mixer (Phase 1 decks) | Two vinyl turntables + battle mixer (later build) |
 | Progress by | Gigs: crowds, bookings, reputation | Contests: local → national → world |
 | Core skill | Reading the crowd, track selection, long blends | Scratching, beat juggling, tight routines |
 | Win state | Headline set at a major festival | Win the World Final |
@@ -40,7 +40,7 @@ Practise routines in the bedroom, then enter mixing contests and work up the lad
 | 3 | National championship | Win it to become national champion |
 | 4 | International (world) championship | Win it — crowned the best DJ in the world |
 
-- **Gear:** two turntables with control vinyl (playing the player's own MP3s, same as the CDJs) and a battle mixer with a fast cut-in crossfader.
+- **Gear:** vinyl only — CDJs aren't used on this path. Two direct-drive turntables (modelled on the Technics SL-1200) and a battle mixer with a fast cut-in crossfader. The player's MP3 folders are turned into vinyl records in a crate; you pull a record and place it on a turntable. See [TURNTABLES.md](TURNTABLES.md).
 - **Core techniques** to build: baby scratch, chirp, transformer, flare, crab; beat juggling (doubles, loops by hand); quick cuts and back-spins.
 - **Training mode** in the bedroom: scratch drills with timing feedback, routine builder to plan and rehearse a contest set.
 - **Finale:** win the World Final and lift the world championship trophy.

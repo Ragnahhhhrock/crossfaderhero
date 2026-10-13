@@ -3,7 +3,7 @@
 A browser DJ career simulator. Plug your own music into two virtual CDJs, mix on a two-channel mixer, and (in later phases) pick one of two career paths (see [docs/CAREER-PATHS.md](docs/CAREER-PATHS.md)):
 
 - **Pro DJ** — start as a bedroom DJ and work up to headlining major festivals in packed stadiums.
-- **Battle DJ** — start as a bedroom turntablist, win local mixing contests, then the national and international championships to be crowned the best DJ in the world (see [docs/COMPETITIONS.md](docs/COMPETITIONS.md)).
+- **Battle DJ** — start as a bedroom turntablist, play vinyl on turntables (your MP3s become records in a crate, see [docs/TURNTABLES.md](docs/TURNTABLES.md)), win local mixing contests, then the national and international championships to be crowned the best DJ in the world (see [docs/COMPETITIONS.md](docs/COMPETITIONS.md)).
 
 Play it at **https://crossfaderhero.com**. Contact: contact@crossfaderhero.com
 

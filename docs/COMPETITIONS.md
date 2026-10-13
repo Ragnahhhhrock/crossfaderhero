@@ -21,7 +21,7 @@ The contest circuit is the spine of the **Battle DJ** career path (see [CAREER-P
 - **Showcase routine:** a set-length solo routine (~3 min at locals → 6 min at the World Final) on two turntables and a battle mixer, scored by judges.
 - **Head-to-head battle:** two DJs trade short rounds (60–90 s) back to back; judges pick a winner per pair. Used for knockout brackets at nationals and internationals.
 - **Round rules** keep it fresh, e.g. "no samples, records only", "set BPM window", "use the organisers' battle record", "scratch-only round".
-- Players use their own MP3 folders on control vinyl, as everywhere else in the game.
+- Vinyl only: players play their own MP3s as virtual records pulled from their crate (see [TURNTABLES.md](TURNTABLES.md)).
 
 ## Judging
 
