@@ -94,6 +94,32 @@
   --room-window-warm: #ffd27a;
   --room-window-cool: #9fc4ff;
 
+  /* ---------- 3D club venue ---------- */
+  --club-floor: #0d0e12; /* sealed black concrete */
+  --club-wall: #15161c;
+  --club-panel: #1d1f27; /* acoustic panels */
+  --club-stage: #191a1f;
+  --club-stage-edge: #2a2c33;
+  --club-truss: #8a8f98;
+  --club-fixture: #101114;
+  --club-tile-off: #121318; /* LED floor tile when dark */
+  --club-bar: #3a2618;
+  --club-bar-glow: #ff9a3c;
+  --club-haze: #8890a8;
+  --club-laser-green: #3dff6e;
+  --club-laser-red: #ff2a3c;
+  --club-laser-blue: #3c6cff;
+  --club-skin-1: #f1c7a5;
+  --club-skin-2: #d9a07a;
+  --club-skin-3: #b07650;
+  --club-skin-4: #7c4f33;
+  --club-skin-5: #4f3222;
+  --club-hair-1: #1a1410;
+  --club-hair-2: #5a3a22;
+  --club-hair-3: #c9a060;
+  --club-denim: #2c3d5a;
+  --club-khaki: #6a604a;
+
   /* ---------- Gig-print palette: posters, sleeves, rug, social art ---------- */
   --print-paper: #f2e6cf;
   --print-red: #e2462f;

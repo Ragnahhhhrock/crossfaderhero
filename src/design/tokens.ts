@@ -39,5 +39,13 @@ export function font(family: 'ui' | 'lcd', px: number, weight = 400): string {
   return `${weight} ${px}px ${token(`font-${family}`)}`;
 }
 
+/**
+ * A procedural hue for light shows and screen visuals, where colour is driven by
+ * the beat rather than a fixed token. h in turns (0..1), s and l 0..1.
+ */
+export function hue(h: number, s = 1, l = 0.5, a = 1): string {
+  return `hsl(${(((h % 1) + 1) % 1) * 360} ${s * 100}% ${l * 100}% / ${a})`;
+}
+
 /** Hot cue colours A–H, in order. */
 export const HOT_CUE_TOKENS = ['play', 'deck-a', 'hot-pink', 'hot-yellow', 'filter', 'deck-b', 'hot-teal', 'ink-100'] as const;

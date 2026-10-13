@@ -18,6 +18,17 @@ You start in a small bedroom: a desk against the wall with two media players, a 
 - Sound comes out of the two speakers as positioned sources, so it changes as you walk around the room.
 - Add `?no3d` to the URL to skip the room and go straight to the decks.
 
+## The club (3D venue)
+
+**https://crossfaderhero.com/club** — the first venue: a nightclub with a stage, DJ booth (the same CDJs and mixer as your bedroom), a 9 × 7 m LED dance floor that holds 50, PA stacks, a bar, and a lighting rig on three trusses. Everything runs to a beat clock and every element is on the control desk (side panel on desktop, bottom sheet on phones):
+
+- **Crowd** slider (0–50, the floor fills from the front) and **podium dancers** on four lit podiums.
+- **Lighting**: wash, chase, pulse or moving heads; five colour palettes (Club, Sunset, Ice, Jungle, Rainbow); intensity.
+- **Scanners** (gobo dots thrown across the floor, speed), **strobes** (every beat, 8ths, 16ths; off by default), **lasers** (green, red, blue or RGB; fan, sweep or tunnel), **smoke** (density; beams show up more in haze).
+- **LED wall** behind the DJ: tunnel, spectrum, kaleidoscope, plasma, retro grid or the Crossfader Hero logo, with speed.
+- **Drop**: a two-bar build then eight bars of everything; the crowd jumps. Plus tempo, LED floor and house-light toggles, all on / blackout / reset, camera views (floor, DJ booth, back, side), auto orbit and glow.
+- Settings persist in the browser. Code: `src/club/` (scene in `Club.ts`, instanced crowd in `people.ts`, LED wall in `screen.ts`, controls in `panel.ts`).
+
 ## Phase 1 — playable decks
 
 - **USB = your folders.** Each deck has a USB slot. "Choose music folder" grants read-only access to a folder of MP3s; add as many folders per USB as you like. Chrome and Edge remember the folders between visits (one click to re-allow); other browsers fall back to picking the folder each visit. Music never leaves your computer.

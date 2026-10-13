@@ -23,7 +23,7 @@ const sourceFiles = walk(join(root, 'src'), /\.(ts|tsx|css)$/).filter((f) => !f.
 const publicFiles = [
   ...walk(join(root, 'public'), /\.(svg|html|webmanifest|json|xml)$/),
   ...walk(join(root, 'scripts/brand'), /\.html$/),
-  ...['index.html', 'brand.html'].map((f) => join(root, f)).filter(existsSync),
+  ...['index.html', 'brand.html', 'club.html'].map((f) => join(root, f)).filter(existsSync),
 ];
 
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -54,7 +54,7 @@ describe('design tokens', () => {
         ...[...s.matchAll(/\b(?:token|hex|alpha|shade)\('([a-z0-9-]+)'/g)].map((m) => m[1]),
       ];
       // component-scoped custom properties are set inline in TSX and are allowed
-      const local = new Set(['accent', 'hc', 'knob-tone']);
+      const local = new Set(['accent', 'hc', 'knob-tone', 'fill']);
       expect(used.filter((u) => !definedTokens.has(u) && !local.has(u))).toEqual([]);
     });
   }
