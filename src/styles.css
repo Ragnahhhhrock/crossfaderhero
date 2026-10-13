@@ -511,3 +511,39 @@ kbd { font: 12px var(--font-lcd); background: var(--surface-sunken); border: 1px
   .scan-fill { transition: none; }
   .scan-track.indeterminate .scan-fill { animation: none; width: 100%; opacity: 0.4; }
 }
+
+/* ---------- hover tips and the booth tour ---------- */
+.tip-bubble {
+  position: fixed; z-index: 35; pointer-events: none; max-width: 280px;
+  background: var(--glass-strong); border: 1px solid var(--border-strong); border-radius: var(--radius-chip);
+  padding: var(--space-3) var(--space-4); color: var(--text); font-size: var(--type-small); line-height: 1.35;
+  box-shadow: var(--shadow-pop); animation: tip-in 0.12s ease-out;
+}
+@keyframes tip-in { from { opacity: 0; transform: translateY(3px); } }
+
+.tour { position: fixed; inset: 0; z-index: 25; }
+.tour-scrim { position: absolute; inset: 0; background: var(--scrim); }
+.tour-spot {
+  position: fixed; border-radius: 10px; pointer-events: none;
+  border: 2px solid var(--cue);
+  box-shadow: 0 0 0 200vmax var(--scrim), 0 0 24px color-mix(in srgb, var(--cue) 45%, transparent);
+  transition: left 0.3s var(--ease-out), top 0.3s var(--ease-out), width 0.3s var(--ease-out), height 0.3s var(--ease-out);
+}
+.tour-card {
+  position: fixed; background: var(--surface-panel); border: 1px solid var(--border-strong); border-left: 3px solid var(--cue);
+  border-radius: var(--radius-screen); padding: var(--space-6) var(--space-7); box-shadow: var(--shadow-modal);
+  transition: left 0.3s var(--ease-out), top 0.3s var(--ease-out);
+}
+.tour-card h3 { margin: var(--space-2) 0 var(--space-3); font-size: var(--type-strong); }
+.tour-kicker { font: var(--type-micro) var(--font-lcd); color: var(--cue); text-transform: uppercase; letter-spacing: 0.06em; }
+.tour-body p, .tour-body li { margin: 0 0 var(--space-3); color: var(--text-2); }
+.tour-body ol { margin: 0; padding-left: 20px; }
+.tour-keys { margin: 0 0 var(--space-3); color: var(--text-3); font-size: var(--type-small); }
+.tour-switch { margin: var(--space-3) 0; font-size: var(--type-small); }
+.tour-dots { display: flex; gap: var(--space-1); margin: var(--space-4) 0; }
+.tour-dots i { flex: 1; height: var(--space-1); border-radius: var(--radius-led); background: var(--surface-control); }
+.tour-dots i.done { background: var(--play); }
+.tour-dots i.now { background: var(--cue); }
+.tour-actions { display: flex; gap: var(--space-4); align-items: center; }
+.tour-grow { flex: 1; }
+.help-actions { display: flex; gap: var(--space-5); align-items: center; justify-content: space-between; margin-top: var(--space-6); }

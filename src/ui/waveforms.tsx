@@ -146,7 +146,7 @@ export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
     g.fillRect(w / 2 - 1, 0, 2, h);
   });
 
-  return <canvas ref={ref} className="scroll-wave" aria-label={`Deck ${id} waveform`} />;
+  return <canvas ref={ref} className="scroll-wave" data-tip="Scrolling waveform: the white line is now. Line up the kicks on both decks to beatmatch." aria-label={`Deck ${id} waveform`} />;
 }
 
 /** Whole-track overview; click or drag to needle-search. */
@@ -223,6 +223,7 @@ export function OverviewWaveform({ id }: { id: DeckId }) {
     <canvas
       ref={ref}
       className="overview-wave"
+      data-tip={deck.kind === 'turntable' ? 'The whole record — click to drop the needle there.' : 'The whole track — click to jump there.'}
       aria-label={deck.kind === 'turntable' ? `Turntable ${id} record overview — click to drop the needle` : `Deck ${id} track overview — click to jump`}
       onPointerDown={(e) => {
         (e.target as Element).setPointerCapture(e.pointerId);
@@ -301,7 +302,7 @@ export function PhaseMeter() {
       <div className="bar-segs deck-a" ref={segsA} aria-hidden>
         <i /><i /><i /><i />
       </div>
-      <div className="phase-centre">
+      <div className="phase-centre" data-tip="Phase meter: how far apart the two decks' beats are. Nudge until it turns green.">
         <canvas ref={ref} width={240} height={14} className="phase-canvas" aria-hidden />
         <span ref={label} className="phase-text" />
       </div>

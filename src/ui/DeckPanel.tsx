@@ -87,6 +87,11 @@ function JogWheel({ id }: { id: DeckId }) {
         deck.setNudge(0);
       }}
       onWheel={(e) => turn(-Math.sign(e.deltaY) * 6, 16)}
+      data-tip={
+        deck.vinyl
+          ? 'Vinyl mode: hold the wheel to grab the record, drag back and forth to scratch.'
+          : `Jog wheel: spin it while playing to nudge the beat into time; while paused it searches. Keys: ${id === 'A' ? 'A / S' : 'K / L'}.`
+      }
     >
       <div className="jog-ring" />
       <div className="jog-platter" ref={platter}>
@@ -114,21 +119,21 @@ function Readouts({ id }: { id: DeckId }) {
   const t = deck.tempo * 100;
   return (
     <div className="readouts">
-      <div className={`time ${warn ? 'warn' : ''}`}>
+      <div className={`time ${warn ? 'warn' : ''}`} data-tip="Time played and time left. It flashes in the last 30 seconds — have the next track ready.">
         <span className="big">{elapsed}</span>
         <span>{remain}</span>
       </div>
       <div className="barbeat" title="Bar.beat">
         {bb}
       </div>
-      <div className="bpm">
+      <div className="bpm" data-tip="BPM at the current tempo, and how far the tempo fader is from 0%. Match the other deck to beatmatch.">
         <span className="big">{bpm ? bpm.toFixed(2) : '--.--'}</span>
         <span>
           {t >= 0 ? '+' : ''}
           {t.toFixed(2)}% <small>±{deck.range}</small>
         </span>
       </div>
-      <div className="key" title={deck.analysis?.key}>
+      <div className="key" title={deck.analysis?.key ? `Key: ${deck.analysis.key}. Tracks one number apart, or with the same number, mix in harmony.` : 'Musical key'}>
         {deck.analysis?.camelot ?? '--'}
       </div>
     </div>
@@ -210,7 +215,7 @@ export function DeckPanel({ id }: { id: DeckId }) {
             className={`tiny loop ${deck.loop?.active && deck.loop.beats === b ? 'on' : ''}`}
             disabled={!deck.loaded}
             onClick={() => deck.autoLoop(b)}
-            title={`${fmtBeats(b)}-beat loop`}
+            title={`Loop ${fmtBeats(b)} ${b > 1 ? 'beats' : 'beat'} from here; press again to exit`}
             aria-label={`${fmtBeats(b)}-beat loop`}
           >
             {fmtBeats(b)}
@@ -219,7 +224,7 @@ export function DeckPanel({ id }: { id: DeckId }) {
         <span className="sep" />
         <button className="tiny" disabled={!deck.loop?.active} onClick={() => deck.resizeLoop(0.5)} title="Halve loop">½×</button>
         <button className="tiny" disabled={!deck.loop?.active} onClick={() => deck.resizeLoop(2)} title="Double loop">2×</button>
-        <button className="tiny wide" disabled={!deck.loop} onClick={() => (deck.loop?.active ? deck.exitLoop() : deck.reloop())}>
+        <button className="tiny wide" disabled={!deck.loop} title={deck.loop?.active ? 'Leave the loop and play on' : 'Jump back into the last loop'} onClick={() => (deck.loop?.active ? deck.exitLoop() : deck.reloop())}>
           {deck.loop?.active ? 'Exit' : 'Reloop'}
         </button>
         <span className="sep" />
@@ -271,11 +276,11 @@ export function DeckPanel({ id }: { id: DeckId }) {
             onPointerUp={() => deck.cueUp()}
             onKeyDown={(e) => (e.key === ' ' || e.key === 'Enter') && (e.preventDefault(), deck.cueDown())}
             onKeyUp={(e) => (e.key === ' ' || e.key === 'Enter') && deck.cueUp()}
-            title="Cue: sets the cue point when paused, returns to it when playing; hold at the cue point to preview"
+            title={`Cue (${id === 'A' ? 'Z' : 'M'}): sets the cue point when paused, returns to it when playing; hold at the cue point to preview`}
           >
             Cue
           </button>
-          <button className={`play-btn ${deck.playing ? 'on' : ''}`} disabled={!deck.loaded} onClick={() => deck.togglePlay()} aria-pressed={deck.playing}>
+          <button className={`play-btn ${deck.playing ? 'on' : ''}`} disabled={!deck.loaded} onClick={() => deck.togglePlay()} aria-pressed={deck.playing} title={`Play / pause (${id === 'A' ? 'X' : ','})`}>
             {deck.playing ? 'Pause' : 'Play'}
           </button>
         </div>
@@ -286,6 +291,7 @@ export function DeckPanel({ id }: { id: DeckId }) {
           <button className="tiny" onClick={() => deck.cycleRange()} title="Tempo range">±{deck.range}%</button>
           <Fader
             label={`Deck ${id} tempo`}
+            tip={`Tempo: slide to speed the track up or down until its BPM matches the other deck. Keys: ${id === 'A' ? 'Q / W' : 'O / P'}; Shift for fine control.`}
             value={0.5 - deck.tempo / (deck.range / 100) / 2}
             onChange={(v) => deck.setTempoFraction((0.5 - v) * 2)}
             length={150}

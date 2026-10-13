@@ -268,6 +268,7 @@ function PlatterView({ tt }: { tt: Turntable }) {
     <canvas
       ref={ref}
       className="tt-canvas"
+      data-tip="Drag the tonearm onto the record to drop the needle. Hold the record to stop it and drag to scratch; drag the platter edge to nudge."
       role="application"
       aria-label={`Turntable ${tt.id}: hold the record to scratch, drag the platter edge to nudge, drag the tonearm to drop the needle`}
       onPointerDown={onDown}
@@ -367,8 +368,8 @@ export function TurntablePanel({ id }: { id: DeckId }) {
             Stop
           </button>
           <div className="rpm-buttons" role="group" aria-label="Speed">
-            <button className={`tiny ${tt.rpm === 33 ? 'on' : ''}`} aria-pressed={tt.rpm === 33} onClick={() => tt.setRpm(33)}>33</button>
-            <button className={`tiny ${tt.rpm === 45 ? 'on' : ''}`} aria-pressed={tt.rpm === 45} onClick={() => tt.setRpm(45)}>45</button>
+            <button className={`tiny ${tt.rpm === 33 ? 'on' : ''}`} aria-pressed={tt.rpm === 33} onClick={() => tt.setRpm(33)} title="33⅓ RPM — most 12-inch records">33</button>
+            <button className={`tiny ${tt.rpm === 45 ? 'on' : ''}`} aria-pressed={tt.rpm === 45} onClick={() => tt.setRpm(45)} title="45 RPM — 7-inch singles, or a quick pitch-up">45</button>
           </div>
           <button
             className={`tiny needle ${tt.needleDown ? 'on' : ''}`}
@@ -379,8 +380,8 @@ export function TurntablePanel({ id }: { id: DeckId }) {
             {tt.needleDown ? 'Lift' : 'Drop'}
           </button>
           <div className="tt-knobs">
-            <Knob label="Start" size={28} value={tt.startTime} min={0.1} max={3} defaultValue={0.7} bipolar={false} onChange={(v) => tt.setStartTime(v)} format={(v) => `${v.toFixed(1)} s`} />
-            <Knob label="Brake" size={28} value={tt.brakeTime} min={0.1} max={4} defaultValue={0.6} bipolar={false} onChange={(v) => tt.setBrakeTime(v)} format={(v) => `${v.toFixed(1)} s`} />
+            <Knob label="Start" tip="Start time: how long the platter takes to get up to speed." size={28} value={tt.startTime} min={0.1} max={3} defaultValue={0.7} bipolar={false} onChange={(v) => tt.setStartTime(v)} format={(v) => `${v.toFixed(1)} s`} />
+            <Knob label="Brake" tip="Brake time: how long the platter takes to stop — turn up for a slow wind-down." size={28} value={tt.brakeTime} min={0.1} max={4} defaultValue={0.6} bipolar={false} onChange={(v) => tt.setBrakeTime(v)} format={(v) => `${v.toFixed(1)} s`} />
           </div>
           <button className={`tiny ${tt.power ? '' : 'warn'}`} onClick={() => tt.togglePower()} aria-pressed={!tt.power} title="Power: switch off for the slow power-down effect">
             {tt.power ? 'Power' : 'Power off'}
@@ -393,6 +394,7 @@ export function TurntablePanel({ id }: { id: DeckId }) {
           <button className="tiny" onClick={() => tt.cycleRange()} title="Pitch range">±{tt.range}%</button>
           <Fader
             label={`Turntable ${id} pitch`}
+            tip={`Pitch: slide to speed the record up or down until it matches the other deck. Keys: ${id === 'A' ? 'Q / W' : 'O / P'}.`}
             value={0.5 - tt.pitch / (tt.range / 100) / 2}
             onChange={(v) => tt.setPitchFraction((0.5 - v) * 2)}
             length={150}

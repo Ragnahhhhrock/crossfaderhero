@@ -13,10 +13,12 @@ interface KnobProps {
   onChange: (v: number) => void;
   format?: (v: number) => string;
   tone?: string;
+  /** Hover tip explaining what the knob does. */
+  tip?: string;
 }
 
 /** Rotary knob. Drag up/down, scroll, arrow keys; double-click resets. */
-export function Knob({ label, value, min = -1, max = 1, defaultValue = 0, bipolar = true, size = 40, onChange, format, tone }: KnobProps) {
+export function Knob({ label, value, min = -1, max = 1, defaultValue = 0, bipolar = true, size = 40, onChange, format, tone, tip }: KnobProps) {
   const drag = useRef<{ y: number; v: number } | null>(null);
   const span = max - min;
   const norm = (value - min) / span;
@@ -63,6 +65,7 @@ export function Knob({ label, value, min = -1, max = 1, defaultValue = 0, bipola
         role="slider"
         tabIndex={0}
         aria-label={label}
+        data-tip={tip ? `${tip} Drag, scroll or use the arrow keys; double-click resets.` : undefined}
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={Math.round(value * 100) / 100}
@@ -102,10 +105,12 @@ interface FaderProps {
   className?: string;
   children?: ReactNode;
   valueText?: string;
+  /** Hover tip explaining what the fader does. */
+  tip?: string;
 }
 
 /** Linear fader. Drag the cap or click the track; arrow keys; double-click resets. */
-export function Fader({ label, value, onChange, orientation = 'vertical', length = 140, defaultValue, className = '', children, valueText }: FaderProps) {
+export function Fader({ label, value, onChange, orientation = 'vertical', length = 140, defaultValue, className = '', children, valueText, tip }: FaderProps) {
   const track = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const vertical = orientation === 'vertical';
@@ -135,6 +140,7 @@ export function Fader({ label, value, onChange, orientation = 'vertical', length
       role="slider"
       tabIndex={0}
       aria-label={label}
+      data-tip={tip}
       aria-orientation={orientation}
       aria-valuemin={0}
       aria-valuemax={1}

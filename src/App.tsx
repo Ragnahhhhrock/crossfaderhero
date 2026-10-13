@@ -22,6 +22,8 @@ import { Crates } from './ui/Crates';
 import { GearPicker } from './ui/GearPicker';
 import { initSetup, useSetup } from './state/setup';
 import type { Turntable } from './audio/turntable';
+import { TipLayer, Tour } from './ui/Tips';
+import { useTips } from './state/tips';
 
 interface DeckKeys {
   cue: string;
@@ -136,7 +138,9 @@ function useKeyboard(toggleHelp: () => void, deckKeysOn: boolean) {
   }, [toggleHelp]);
 }
 
-function Help({ onClose }: { onClose: () => void }) {
+function Help({ onClose, onTour }: { onClose: () => void; onTour: () => void }) {
+  const hoverTips = useTips((s) => s.hoverTips);
+  const setHoverTips = useTips((s) => s.setHoverTips);
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', esc);
@@ -205,7 +209,14 @@ function Help({ onClose }: { onClose: () => void }) {
           <li>Bring B in with the fader or crossfader, swapping the low EQ so the basslines don't clash.</li>
         </ol>
         <p className="note">Turn on Split cue to hear the cued channel in your left ear and the master in your right. Open Lessons in the top bar for guided, step-by-step tutorials.</p>
-        <button className="primary" onClick={onClose} autoFocus>Done</button>
+        <label className="switch">
+          <input type="checkbox" checked={hoverTips} onChange={(e) => setHoverTips(e.target.checked)} />
+          <span>Show tips when I hover over a control</span>
+        </label>
+        <div className="help-actions">
+          <button className="tiny" onClick={onTour}>Take the booth tour</button>
+          <button className="primary" onClick={onClose} autoFocus>Done</button>
+        </div>
       </div>
     </div>
   );
@@ -261,7 +272,11 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
   const [mode, setMode] = useState<Mode>('room');
   // in the club the first-visit questions wait until you jump on the decks
   const askSetup = !club || mode === 'booth';
-  const modal = help || lessonsOpen || (askSetup && (!onboarded || gear === null)) || gearOpen;
+  const touring = useTips((s) => s.touring);
+  const tourSeen = useTips((s) => s.tourSeen);
+  const startTour = useTips((s) => s.startTour);
+  const setupPending = askSetup && (!onboarded || gear === null);
+  const modal = help || lessonsOpen || setupPending || gearOpen || touring;
   const [zoom, setZoom] = useState(1);
   setUiPaused(mode === 'room');
   const [usbOpen, setUsbOpenRaw] = useState(false);
@@ -320,6 +335,18 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
+
+  // stepping away from the decks ends a tour in progress
+  useEffect(() => {
+    if (mode === 'room' && touring) useTips.setState({ touring: false });
+  }, [mode, touring]);
+
+  // first time at the decks: walk through the booth once the setup questions are answered
+  useEffect(() => {
+    if (mode !== 'booth' || tourSeen || touring || setupPending || help || lessonsOpen || gearOpen) return;
+    const t = window.setTimeout(startTour, 900); // let the booth slide in first
+    return () => clearTimeout(t);
+  }, [mode, tourSeen, touring, setupPending, help, lessonsOpen, gearOpen, startTour]);
 
   // the 3D view frames the gear in the gap above the controls
   useEffect(() => {
@@ -439,16 +466,16 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
           {mode === 'booth' && !decksHidden && (
             <>
               <div className="zoom" role="group" aria-label="Waveform zoom">
-                <button className="tiny" onClick={() => setZoom((z) => Math.max(0.5, z / 1.5))} aria-label="Zoom out">−</button>
-                <button className="tiny" onClick={() => setZoom((z) => Math.min(4, z * 1.5))} aria-label="Zoom in">+</button>
+                <button className="tiny" onClick={() => setZoom((z) => Math.max(0.5, z / 1.5))} aria-label="Zoom out" title="Zoom the waveforms out">−</button>
+                <button className="tiny" onClick={() => setZoom((z) => Math.min(4, z * 1.5))} aria-label="Zoom in" title="Zoom the waveforms in">+</button>
               </div>
               {gear !== 'vinyl' && (
-                <button className={`tiny ${usbOpen ? 'on' : ''}`} onClick={() => setUsbOpen((o) => !o)} aria-expanded={usbOpen}>
+                <button className={`tiny ${usbOpen ? 'on' : ''}`} onClick={() => setUsbOpen((o) => !o)} aria-expanded={usbOpen} data-tour="usb" title="Load MP3s from a folder on your computer">
                   USB browser
                 </button>
               )}
               {gear !== 'cdj' && gear !== null && (
-                <button className={`tiny ${crateOpen ? 'on' : ''}`} onClick={() => setCrateOpen((o) => !o)} aria-expanded={crateOpen}>
+                <button className={`tiny ${crateOpen ? 'on' : ''}`} onClick={() => setCrateOpen((o) => !o)} aria-expanded={crateOpen} data-tour="crates" title="Pick a record to put on a turntable">
                   Record crates
                 </button>
               )}
@@ -465,14 +492,14 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
             </div>
           )}
           {club && mode === 'booth' && !decksHidden && (
-            <button className={`tiny ${deskOpen ? 'on' : ''}`} onClick={() => setDeskOpen((o) => !o)} aria-expanded={deskOpen} title="Lights, lasers, smoke and the LED wall">
+            <button className={`tiny ${deskOpen ? 'on' : ''}`} onClick={() => setDeskOpen((o) => !o)} aria-expanded={deskOpen} data-tour="lights" title="Lights, lasers, smoke and the LED wall">
               Light desk
             </button>
           )}
           <button className="tiny" onClick={() => setGearOpen(true)} title="CDJs, turntables or both">
             Gear
           </button>
-          <button className="tiny" onClick={() => setHelp(true)}>
+          <button className="tiny" onClick={() => setHelp(true)} data-tour="help" title="Shortcuts, beatmatching tips and the booth tour (?)">
             Keys &amp; tips
           </button>
           {mode === 'booth' ? (
@@ -519,7 +546,22 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
 
       <Coach onOpenLessons={() => setLessonsOpen(true)} />
       <Toasts />
-      {help && <Help onClose={() => setHelp(false)} />}
+      {help && <Help onClose={() => setHelp(false)} onTour={() => (setHelp(false), setMode('booth'), startTour())} />}
+      {mode === 'booth' && !setupPending && (
+        <Tour
+          club={club}
+          onBegin={() => {
+            setUsbOpen(false);
+            setCrateOpen(false);
+            setDecksHidden(false);
+          }}
+          onFinish={() => {
+            // nothing loaded yet: hand straight over to the music
+            if (nothingLoaded) gear === 'vinyl' ? setCrateOpen(true) : setUsbOpen(true);
+          }}
+        />
+      )}
+      <TipLayer />
       {lessonsOpen && <LessonsModal onClose={() => setLessonsOpen(false)} />}
       {askSetup && (gear === null ? <GearPicker /> : <Welcome />)}
       {gearOpen && gear !== null && <GearPicker onClose={() => setGearOpen(false)} />}

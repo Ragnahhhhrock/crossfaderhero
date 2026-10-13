@@ -29,7 +29,7 @@ function Meter({ analyser, label }: { analyser: AnalyserNode; label: string }) {
     el.classList.toggle('clipping', clip);
   });
   return (
-    <div className="meter" ref={ref} role="img" aria-label={`${label} level`}>
+    <div className="meter" ref={ref} role="img" aria-label={`${label} level`} data-tip={`${label} level. Keep it out of the red.`}>
       {Array.from({ length: SEGMENTS }, (_, i) => (
         <i key={i} className={i < 2 ? 'red' : i < 5 ? 'amber' : ''} />
       ))}
@@ -55,26 +55,27 @@ function Channel({ id }: { id: DeckId }) {
         <span className="ch-label">{id}</span>
       )}
       <div className="knobs-2">
-        <Knob label="Trim" size={34} value={s.trim} onChange={(v) => m.set(id, { trim: v })} format={(v) => db(trimDb(v))} tone={tone} />
-        <Knob label="Hi" size={34} value={s.hi} onChange={(v) => m.set(id, { hi: v })} format={(v) => db(eqDb(v))} tone={tone} />
+        <Knob label="Trim" tip="Trim: input gain. Set it so the meter peaks in the amber, not the red." size={34} value={s.trim} onChange={(v) => m.set(id, { trim: v })} format={(v) => db(trimDb(v))} tone={tone} />
+        <Knob label="Hi" tip="High EQ: hats and cymbals. Turn down to soften a track." size={34} value={s.hi} onChange={(v) => m.set(id, { hi: v })} format={(v) => db(eqDb(v))} tone={tone} />
         <Knob
           label="Filter"
+          tip="Filter: left for low-pass (muffled), right for high-pass (thin). Centre is off."
           size={34}
           value={s.filter}
           onChange={(v) => m.set(id, { filter: v })}
           format={(v) => (Math.abs(v) < 0.03 ? 'Off' : v < 0 ? 'Low-pass' : 'High-pass')}
           tone="var(--filter)"
         />
-        <Knob label="Mid" size={34} value={s.mid} onChange={(v) => m.set(id, { mid: v })} format={(v) => db(eqDb(v))} tone={tone} />
+        <Knob label="Mid" tip="Mid EQ: vocals, synths and snares." size={34} value={s.mid} onChange={(v) => m.set(id, { mid: v })} format={(v) => db(eqDb(v))} tone={tone} />
         <span />
-        <Knob label="Low" size={34} value={s.low} onChange={(v) => m.set(id, { low: v })} format={(v) => db(eqDb(v))} tone={tone} />
+        <Knob label="Low" tip="Low EQ: kick and bass. Cut one deck's lows while you bring the other in so the basslines don't clash." size={34} value={s.low} onChange={(v) => m.set(id, { low: v })} format={(v) => db(eqDb(v))} tone={tone} />
       </div>
-      <button className={`tiny ch-cue ${s.cue ? 'on' : ''}`} aria-pressed={s.cue} onClick={() => m.set(id, { cue: !s.cue })} title="Send to headphones (split cue)">
+      <button className={`tiny ch-cue ${s.cue ? 'on' : ''}`} aria-pressed={s.cue} onClick={() => m.set(id, { cue: !s.cue })} title="Cue: hear this channel in your headphones before the crowd does">
         Cue
       </button>
       <div className="fader-and-meter">
         <Meter analyser={ch.meter} label={`Channel ${id}`} />
-        <Fader label={`Channel ${id} fader`} value={s.fader} onChange={(v) => m.set(id, { fader: v })} length={130} />
+        <Fader label={`Channel ${id} fader`} tip={`Channel ${id} volume. Bring it up to put deck ${id} on air.`} value={s.fader} onChange={(v) => m.set(id, { fader: v })} length={130} />
       </div>
     </div>
   );
@@ -88,7 +89,7 @@ export function MixerPanel() {
         <Channel id="A" />
         <div className="master-strip" role="group" aria-label="Master">
           <span className="ch-label">Master</span>
-          <Knob label="Level" value={m.masterLevel} min={0} max={1} defaultValue={0.8} bipolar={false} onChange={(v) => m.setMaster(v)} />
+          <Knob label="Level" tip="Master level: how loud the whole mix is." value={m.masterLevel} min={0} max={1} defaultValue={0.8} bipolar={false} onChange={(v) => m.setMaster(v)} />
           <div className="master-meters">
             <Meter analyser={m.masterMeterL} label="Master left" />
             <Meter analyser={m.masterMeterR} label="Master right" />
@@ -102,7 +103,7 @@ export function MixerPanel() {
             >
               Split cue
             </button>
-            <Knob label="Phones" value={m.cueLevel} min={0} max={1} defaultValue={0.8} bipolar={false} size={32} onChange={(v) => m.setCueLevel(v)} />
+            <Knob label="Phones" tip="Headphone volume." value={m.cueLevel} min={0} max={1} defaultValue={0.8} bipolar={false} size={32} onChange={(v) => m.setCueLevel(v)} />
           </div>
         </div>
         <Channel id="B" />
@@ -111,6 +112,7 @@ export function MixerPanel() {
         <span className="xf-end">A</span>
         <Fader
           label="Crossfader"
+          tip="Crossfader: left plays deck A, right plays deck B, the middle plays both. ← → keys move it, ↓ centres it."
           orientation="horizontal"
           value={m.crossfader}
           onChange={(v) => engine.mixer.setCrossfader(v)}
