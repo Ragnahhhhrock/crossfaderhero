@@ -1,7 +1,7 @@
 {
   "name": "Crossfader Hero",
   "short_name": "Crossfader",
-  "description": "Mix your own music on virtual decks — from bedroom to main stage.",
+  "description": "Mix your own music on virtual decks or press it to vinyl — from bedroom to main stage.",
   "start_url": "/",
   "scope": "/",
   "display": "fullscreen",
