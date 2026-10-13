@@ -15,6 +15,7 @@ import type { Gear } from '../state/setup';
 import type { DeckId } from '../types';
 import { CAPACITY, PALETTES, type CameraView, type ClubSettings } from './settings';
 import { crowdSlots, Figures, type Person } from './people';
+import { musicStyle, type Music } from './music';
 import { LedWall } from './screen';
 
 // The venue, in metres. Stage at the north end (−z), bar at the south end.
@@ -47,6 +48,8 @@ export interface ClubClock {
   bpm: number;
   /** Which deck is leading, while live. */
   deck: DeckId | null;
+  /** The style of what's playing: how the floor dances, what the podium dancers wear. */
+  music: Music;
 }
 
 const VIEWS: Record<CameraView, { pos: THREE.Vector3; target: THREE.Vector3 }> = {
@@ -188,7 +191,7 @@ export class Club {
   private orbit = { ...ORBIT_HOME };
   private width = 1;
   private height = 1;
-  readonly clock: ClubClock = { live: false, bpm: 128, deck: null };
+  readonly clock: ClubClock = { live: false, bpm: 128, deck: null, music: 'house' };
   private bassAvg = 0;
   private quietBeats = 0;
   private lastBeats = 0;
@@ -250,9 +253,9 @@ export class Club {
       phase: i * 0.25,
       r: i / 4,
     }));
-    this.dancers = new Figures(dancerSpots, 3, true);
+    this.dancers = new Figures(dancerSpots, 3, 'dancers');
     this.podiums.add(this.dancers.group);
-    this.dj = new Figures([{ x: 0, y: STAGE.h, z: BOOTH_Z - 0.75, yaw: 0, scale: 1.02, style: 'dj', phase: 0, r: 0.5 }], 21);
+    this.dj = new Figures([{ x: 0, y: STAGE.h, z: BOOTH_Z - 0.75, yaw: 0, scale: 1.02, style: 'dj', phase: 0, r: 0.5 }], 21, 'dj');
     this.scene.add(this.dj.group);
 
     this.apply(settings);
@@ -978,9 +981,13 @@ export class Club {
     if (this.takenOver) energy = src ? THREE.MathUtils.clamp(0.3 + this.bassAvg * 1.5, 0.25, 1.3) : 0.12;
     if (phase === 'build') energy = 0.2;
     if (dropping) energy = 1.6;
-    this.crowd.update(beats, energy, time);
-    this.dancers.update(beats, Math.max(this.takenOver && !src ? 0.12 : 1, energy), time);
-    if (this.dj.group.visible) this.dj.update(beats, s.playing ? energy : 0.1, time);
+    // the style of what's on air (its genre tag, else a guess from the tempo) sets the moves and the outfits
+    const music = musicStyle(src ? engine.player(src.deck).track?.meta.genre : undefined, this.clock.bpm);
+    this.clock.music = music;
+    for (const f of [this.crowd, this.dancers, this.dj]) f.setMusic(music, time);
+    this.crowd.update(beats, energy, time, this.clock.bpm);
+    this.dancers.update(beats, Math.max(this.takenOver && !src ? 0.12 : 1, energy), time, this.clock.bpm);
+    if (this.dj.group.visible) this.dj.update(beats, s.playing ? energy : 0.1, time, this.clock.bpm);
 
     // the booth gear mirrors the decks once they're yours
     if (this.takenOver) {

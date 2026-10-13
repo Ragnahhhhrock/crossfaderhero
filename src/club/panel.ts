@@ -75,7 +75,7 @@ export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings)
     // the readout shows whatever the room is following: your mix, or the light desk's tempo
     bpmVal.textContent = club.clock.live ? club.clock.bpm.toFixed(1) : String(state.bpm);
     bpm.classList.toggle('live', club.clock.live);
-    bpmUnit.textContent = club.clock.live ? `BPM · deck ${club.clock.deck}` : 'BPM';
+    bpmUnit.textContent = club.clock.live ? `BPM · deck ${club.clock.deck} · ${club.clock.music}` : `BPM · ${club.clock.music}`;
     if (liveNote) liveNote.textContent = club.clock.live ? 'Following your mix: the lights and crowd lock to the deck on air.' : 'No deck on air: the lights run at this tempo.';
     drop.textContent = p === 'build' ? 'Building…' : p === 'drop' ? 'Drop!' : 'Drop';
     drop.classList.toggle('live', p !== 'none');

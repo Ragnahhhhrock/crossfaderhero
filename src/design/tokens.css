@@ -119,6 +119,21 @@
   --club-hair-3: #c9a060;
   --club-denim: #2c3d5a;
   --club-khaki: #6a604a;
+  --club-skin-6: #fbe0cf; /* the crowd: more skin tones */
+  --club-skin-7: #e8b48c;
+  --club-skin-8: #c68a5e;
+  --club-skin-9: #9a6440;
+  --club-skin-10: #3a2418;
+  --club-hair-4: #8a8a88; /* grey */
+  --club-hair-5: #8e3a1c; /* auburn */
+  --club-hair-6: #ece0c0; /* platinum */
+  --club-hair-7: #ff5fa8; /* dyed */
+  --club-hair-8: #3a7cff;
+  --club-hair-9: #3ad68a;
+  --club-hair-10: #9b4dff;
+  --club-ink: #26364a; /* tattoos */
+  --club-ink-red: #8a2a2e;
+  --club-lip: #8a4a48;
 
   /* ---------- Gig-print palette: posters, sleeves, rug, social art ---------- */
   --print-paper: #f2e6cf;
