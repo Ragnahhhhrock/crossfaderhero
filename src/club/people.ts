@@ -3,7 +3,7 @@ import { hex } from '../design/tokens';
 import { MUSICS, type Music } from './music';
 
 /** How a figure moves. The crowd's own style flavours whatever the music asks for. */
-export type Style = 'bounce' | 'pump' | 'handsUp' | 'sway' | 'dancer' | 'dj';
+export type Style = 'bounce' | 'pump' | 'handsUp' | 'sway' | 'dancer' | 'dj' | 'bartender';
 
 export interface Person {
   x: number;
@@ -18,7 +18,7 @@ export interface Person {
 }
 
 /** Who's dancing: the crowd dresses once; podium dancers change outfit with the music. */
-export type FigureKind = 'crowd' | 'dancers' | 'dj';
+export type FigureKind = 'crowd' | 'dancers' | 'dj' | 'staff';
 
 /** A pose for one frame: offsets and joint angles in radians. */
 interface Pose {
@@ -354,6 +354,12 @@ export class Figures {
     // the crowd came dressed for all sorts of nights
     this.outfits = people.map(() => makeOutfit(rand, MUSICS[Math.floor(rand() * MUSICS.length)], false));
     if (kind === 'dancers') this.dress();
+    // bar staff wear black
+    if (kind === 'staff')
+      this.outfits = people.map(() => ({
+        top: 'print-ink', topW: 1, sleeves: 'short', legs: 'print-ink', shorts: false, baggy: false,
+        shoes: 'print-ink', hat: 'none', hatC: 'print-ink', shades: false,
+      }));
     people.forEach((_, i) => this.paint(i));
   }
 
@@ -582,6 +588,28 @@ function poseFor(p: Person, L: Look, music: Music, beats: number, energy: number
   const two = Math.sin(b * Math.PI); // one cycle per two beats
   const bar = (((beats / 4) % 1) + 1) % 1;
   const take = p.r < 0.5 ? 0 : 1; // each person's own take on the move
+
+  if (p.style === 'bartender') {
+    // shake a cocktail, pour it, then wipe down the counter; nodding along the whole time
+    const cycle = (time + p.r * 20) % 14;
+    pose.nod = 0.07 * bounce;
+    pose.roll = 0.04 * two;
+    pose.shift = Math.sin(time * 0.11 + p.r * 6) * 1.1;
+    if (cycle < 3) {
+      const sh = 0.16 * Math.sin(time * 22);
+      pose.lean = -0.04;
+      arms(pose, [2.35 + sh, -0.3], [2.25 + sh, 0.05]);
+    } else if (cycle < 5) {
+      pose.lean = 0.14;
+      pose.nod = 0.25;
+      arms(pose, [1.35, 0.08], [1.75 + 0.1 * Math.sin(time * 1.5), 0.05]);
+    } else {
+      const w = time * 2.2;
+      pose.lean = 0.22;
+      arms(pose, [1.25 + 0.08 * Math.sin(w * 2), 0.15 + 0.25 * Math.sin(w)], [0.3, 0.1]);
+    }
+    return pose;
+  }
 
   if (p.style === 'dj') {
     pose.nod = 0.22 * bounce * (music === 'hiphop' ? 1.4 : 1);

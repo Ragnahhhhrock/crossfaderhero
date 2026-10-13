@@ -17,6 +17,7 @@ import { CAPACITY, PALETTES, type CameraView, type ClubSettings } from './settin
 import { crowdSlots, Figures, type Person } from './people';
 import { musicStyle, type Music } from './music';
 import { LedWall } from './screen';
+import { Bar, BARTENDER_Z } from './bar';
 
 // The venue, in metres. Stage at the north end (−z), bar at the south end.
 const V = { w: 14, d: 18, h: 6 };
@@ -24,6 +25,7 @@ const STAGE = { x: 5.5, z0: -9, z1: -5, h: 1.0 };
 const FLOOR = { x0: -4.5, x1: 4.5, z0: -4.2, z1: 3 }; // ~65 m², 50 people with room to dance
 const TRUSS_Y = 5.35;
 const BOOTH_Z = -6.3;
+const BAR_Z = V.d / 2 - 1.3;
 
 export type ClubMode = 'room' | 'booth';
 /** How you see the club from the decks: through the DJ's eyes, or from behind them. */
@@ -167,6 +169,7 @@ export class Club {
   private wall = new LedWall();
   private wallMesh!: THREE.Mesh;
   private speakers: SpeakerModel[] = [];
+  private bar!: Bar;
 
   private boothGear = new THREE.Group();
   private cdjModels: { A: CdjModel; B: CdjModel } | null = null;
@@ -199,6 +202,7 @@ export class Club {
   private crowd: Figures;
   private dancers: Figures;
   private dj: Figures;
+  private staff: Figures;
   private dot = softDot();
   private tmpColor = new THREE.Color();
 
@@ -233,6 +237,7 @@ export class Club {
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
 
+    this.bar = new Bar();
     this.buildShell();
     this.buildStage();
     this.buildRig();
@@ -257,6 +262,9 @@ export class Club {
     this.podiums.add(this.dancers.group);
     this.dj = new Figures([{ x: 0, y: STAGE.h, z: BOOTH_Z - 0.75, yaw: 0, scale: 1.02, style: 'dj', phase: 0, r: 0.5 }], 21, 'dj');
     this.scene.add(this.dj.group);
+    // the bartender works facing the room
+    this.staff = new Figures([{ x: -0.8, y: 0, z: BAR_Z + BARTENDER_Z, yaw: Math.PI, scale: 1, style: 'bartender', phase: 0, r: 0.3 }], 33, 'staff');
+    this.scene.add(this.staff.group);
 
     this.apply(settings);
     const ro = new ResizeObserver(() => this.resize(container));
@@ -343,25 +351,8 @@ export class Club {
     }
 
     // the bar at the back
-    const bar = new THREE.Group();
-    bar.position.set(0, 0, V.d / 2 - 1.3);
-    this.box(7, 1.08, 0.7, this.std('club-bar', 0.6), 0, 0.54, 0, bar);
-    this.box(7.3, 0.06, 0.85, this.std('graphite-500', 0.2, 0.7), 0, 1.1, 0, bar);
-    const barGlow = this.glow('club-bar-glow', 2);
-    this.box(7, 0.03, 0.03, barGlow, 0, 1.0, -0.37, bar);
-    this.box(8, 0.04, 0.35, this.glow('club-bar-glow', 1.2), 0, 2.0, 1.05, bar); // back shelf
-    // bottles on the shelf
-    const bottleGeo = new THREE.CylinderGeometry(0.04, 0.045, 0.3, 8);
-    const bottleMats = ['play', 'deck-b', 'deck-a', 'print-red'].map((t) => new THREE.MeshStandardMaterial({ color: hex(t), roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.8 }));
-    for (let i = 0; i < 26; i++) {
-      const b = new THREE.Mesh(bottleGeo, bottleMats[i % 4]);
-      b.position.set(-3.7 + i * 0.3, 2.17, 1.05);
-      bar.add(b);
-    }
-    const barLight = new THREE.PointLight(hex('club-bar-glow'), 3, 6, 1.5);
-    barLight.position.set(0, 2.2, 0.2);
-    bar.add(barLight);
-    this.scene.add(bar);
+    this.bar.group.position.set(0, 0, BAR_Z);
+    this.scene.add(this.bar.group);
 
     // exit sign over the back door
     this.box(0.5, 0.18, 0.06, this.glow('play', 2), V.w / 2 - 1.2, 2.6, V.d / 2 - 0.05);
@@ -988,6 +979,8 @@ export class Club {
     this.crowd.update(beats, energy, time, this.clock.bpm);
     this.dancers.update(beats, Math.max(this.takenOver && !src ? 0.12 : 1, energy), time, this.clock.bpm);
     if (this.dj.group.visible) this.dj.update(beats, s.playing ? energy : 0.1, time, this.clock.bpm);
+    this.staff.update(beats, 0.5, time, this.clock.bpm);
+    this.bar.update(time);
 
     // the booth gear mirrors the decks once they're yours
     if (this.takenOver) {

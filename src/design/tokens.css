@@ -105,6 +105,20 @@
   --club-tile-off: #121318; /* LED floor tile when dark */
   --club-bar: #3a2618;
   --club-bar-glow: #ff9a3c;
+  --club-neon-bar: #ff2e88; /* the BAR sign's tubes */
+  --club-neon-trim: #36e8ff; /* the sign's border tube */
+  --club-neon-core: #fff0f6; /* hot centre of a lit tube */
+  --club-shelf-neon: #4a7cff; /* back-bar backlight */
+  --club-brass: #c49a4a; /* foot rail, stool rings */
+  --club-leather: #2b1a14; /* stool seats */
+  --club-whisky: #c06a1c; /* top-shelf liquor, by colour */
+  --club-cognac: #7e3412;
+  --club-rum: #4a1e0a;
+  --club-tequila: #e3b04a;
+  --club-gin: #cfeee6;
+  --club-vodka: #e6edf5;
+  --club-liqueur: #2f8a4a;
+  --club-champagne: #1f3a24;
   --club-haze: #8890a8;
   --club-laser-green: #3dff6e;
   --club-laser-red: #ff2a3c;
