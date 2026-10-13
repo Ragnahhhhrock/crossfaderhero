@@ -491,4 +491,4 @@ kbd { font: 12px var(--font-lcd); background: var(--surface-sunken); border: 1px
 }
 
 /* marketing render mode (?shot): just the room */
-.shot .topbar, .shot .room-hints, .shot .step-prompt, .shot .hover-label, .shot .toasts, .shot .coach { display: none !important; }
+.shot .topbar, .shot .room-hints, .shot .step-prompt, .shot .hover-label, .shot .toasts, .shot .coach, .shot .modal-backdrop { display: none !important; }

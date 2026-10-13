@@ -1,6 +1,7 @@
 /**
  * Builds every brand asset from src/design/tokens.css:
  *   public/favicon.svg, public/mark.svg          (vector, palette colours inlined)
+ *   public/avatar.svg                            (the DJ avatar, scripts/brand/avatar.mjs)
  *   public/apple-touch-icon.png, icon-192.png, icon-512.png, icon-maskable-512.png
  *   public/og-image.png (1200×630), public/twitter-card.png (1200×600)
  * The social images are a real render of the 3D bedroom (?shot) under the
@@ -13,6 +14,7 @@ import { createServer } from 'node:http';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { avatarSvg } from './avatar.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const pub = join(root, 'public');
@@ -32,6 +34,8 @@ const mark = (bg) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64
 writeFileSync(join(pub, 'favicon.svg'), mark(true));
 writeFileSync(join(pub, 'mark.svg'), mark(false));
 console.log('wrote favicon.svg, mark.svg');
+writeFileSync(join(pub, 'avatar.svg'), avatarSvg(t));
+console.log('wrote avatar.svg');
 
 // ---- serve the built app ----
 const dist = join(root, 'dist');
@@ -61,6 +65,7 @@ try {
   for (const [out, w, h, bg] of [['og-image.png', 1200, 630, 'room-1200x630'], ['twitter-card.png', 1200, 600, 'room-1200x600']]) {
     const p = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
     await p.goto(`${tpl}?w=${w}&h=${h}&bg=${encodeURIComponent(pathToFileURL(join(cache, `${bg}.png`)).href)}`);
+    await p.evaluate((svg) => { document.getElementById('avatar').innerHTML = svg; }, avatarSvg((n) => `var(--${n})`, { size: '100%' }));
     await p.evaluate(() => document.fonts.ready);
     await p.waitForTimeout(300);
     await p.screenshot({ path: join(pub, out) });

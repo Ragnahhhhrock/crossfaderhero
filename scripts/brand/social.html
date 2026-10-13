@@ -24,11 +24,14 @@
   .split i:first-child { background: var(--deck-a); box-shadow: 0 0 14px var(--deck-a); }
   .split i:last-child { background: var(--deck-b); box-shadow: 0 0 14px var(--deck-b); }
   .url { font-family: var(--font-lcd); font-size: 24px; color: var(--text-2); }
+  #avatar { position: absolute; right: 64px; top: 50%; width: calc(var(--h) * 0.62); height: calc(var(--h) * 0.62); transform: translateY(-50%); filter: drop-shadow(0 8px 30px var(--shade-65)); }
+  #avatar svg { display: block; }
 </style>
 </head>
 <body>
   <div class="bg" id="bg"></div>
   <div class="scrim"></div>
+  <div id="avatar"></div>
   <div class="content">
     <div class="lockup">
       <svg width="96" height="96" viewBox="0 0 64 64" aria-hidden="true">
@@ -38,7 +41,7 @@
       </svg>
       <div class="wordmark">Crossfader<br />Hero</div>
     </div>
-    <p class="tagline">Mix your own music on virtual decks. <strong>Start in your bedroom. Finish on the main stage.</strong></p>
+    <p class="tagline">Mix your own music on virtual decks or vinyl. <strong>Start in your bedroom. Finish on the main stage.</strong></p>
     <div class="foot">
       <div class="split"><i></i><i></i></div>
       <span class="url">crossfaderhero.com</span>

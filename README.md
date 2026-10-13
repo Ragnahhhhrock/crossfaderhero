@@ -96,7 +96,7 @@ Gameplay events (track loads/plays/finishes, mixes, lessons, promotions, feature
 
 ## Brand and design system
 
-Every colour, typeface and measurement comes from `src/design/tokens.css`; `npm test` fails if anything else hard-codes one. The guide is `docs/STYLEGUIDE.md` and live at https://crossfaderhero.com/brand. After changing tokens, regenerate the favicon, icons and social images with `npm run build && npm run brand` (needs `npx playwright install chromium` once).
+Every colour, typeface and measurement comes from `src/design/tokens.css`; `npm test` fails if anything else hard-codes one. The guide is `docs/STYLEGUIDE.md` and live at https://crossfaderhero.com/brand. After changing tokens, regenerate the favicon, icons, DJ avatar (`public/avatar.svg`) and social images with `npm run build && npm run brand` (needs `npx playwright install chromium` once).
 
 ## Layout
 
