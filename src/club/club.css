@@ -1,68 +1,53 @@
-/* The club venue page: full-bleed 3D with a control desk over it. */
-html,
-body {
-  margin: 0;
-  height: 100%;
-  background: var(--surface-void);
-  color: var(--text);
-  font-family: var(--font-ui);
-  overflow: hidden;
-  -webkit-tap-highlight-color: transparent;
-}
-
-#club {
-  position: fixed;
+/* The club venue: full-bleed 3D with the light desk over it. */
+.club-view {
+  position: absolute;
   inset: 0;
 }
-#club canvas {
+.club-stage {
+  position: absolute;
+  inset: 0;
+}
+.club-stage canvas {
   display: block;
   width: 100%;
   height: 100%;
   touch-action: none;
 }
-
-.club-top {
-  position: fixed;
-  top: var(--space-6);
-  left: var(--space-7);
+.club-jump {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: var(--space-5);
-  padding: var(--space-3) var(--space-6) var(--space-3) var(--space-4);
+  font: inherit;
+  font-size: 16px;
+  font-weight: var(--weight-semibold);
+  color: var(--text);
   background: var(--glass);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-panel);
+  border: 1px solid var(--tint-12);
+  border-radius: var(--radius-screen);
   box-shadow: var(--shadow-pop);
+  padding: var(--space-5) 18px;
+  cursor: pointer;
   z-index: 2;
 }
-.club-top img {
-  width: 26px;
-  height: 26px;
+.club-jump:hover {
+  border-color: var(--deck-a);
+  box-shadow: var(--shadow-pop), 0 0 var(--glow-size) color-mix(in srgb, var(--deck-a) 40%, transparent);
 }
-.club-top b {
-  font-size: var(--type-brand);
-  font-weight: var(--weight-bold);
-  letter-spacing: 0.01em;
-}
-.club-top span {
-  font-size: var(--type-small);
-  color: var(--text-2);
-}
-.club-top a {
-  color: var(--text-2);
-  font-size: var(--type-small);
-  text-decoration: none;
-  border-left: 1px solid var(--border);
-  padding-left: var(--space-5);
-}
-.club-top a:hover {
-  color: var(--text);
+/* leave room for the light desk on the right */
+@media (min-width: 721px) {
+  .club-jump {
+    left: calc(50% - 170px);
+  }
 }
 
 /* ---------- the panel ---------- */
 .club-panel {
   position: fixed;
-  top: var(--space-6);
+  top: 56px;
   right: var(--space-6);
   bottom: var(--space-6);
   width: 320px;
@@ -73,8 +58,19 @@ body {
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-panel), var(--shadow-pop);
   backdrop-filter: blur(10px);
-  z-index: 3;
+  z-index: 4;
   overflow: hidden;
+}
+/* on the decks the light desk is a drawer you open from the top bar */
+.mode-booth .club-panel:not(.desk-open) {
+  display: none;
+}
+.mode-booth .club-panel {
+  bottom: auto;
+  max-height: calc(100% - 72px);
+}
+.club-bpm.live .club-lcd {
+  color: var(--play);
 }
 .club-head {
   padding: var(--space-6) var(--space-6) var(--space-5);
@@ -340,11 +336,11 @@ button:focus-visible {
 
 /* ---------- phones: the panel becomes a bottom sheet ---------- */
 @media (max-width: 720px) {
-  .club-top {
-    top: var(--space-4);
-    left: var(--space-4);
+  .venue-club .topbar-right,
+  .venue-club .venue {
+    display: none;
   }
-  .club-top span {
+  .club-jump {
     display: none;
   }
   .club-panel {

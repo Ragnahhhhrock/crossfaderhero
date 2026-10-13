@@ -27,7 +27,10 @@ You start in a small bedroom: a desk against the wall with two media players, a 
 - **Scanners** (gobo dots thrown across the floor, speed), **strobes** (every beat, 8ths, 16ths; off by default), **lasers** (green, red, blue or RGB; fan, sweep or tunnel), **smoke** (density; beams show up more in haze).
 - **LED wall** behind the DJ: tunnel, spectrum, kaleidoscope, plasma, retro grid or the Crossfader Hero logo, with speed.
 - **Drop**: a two-bar build then eight bars of everything; the crowd jumps. Plus tempo, LED floor and house-light toggles, all on / blackout / reset, camera views (floor, DJ booth, back, side), auto orbit and glow.
-- Settings persist in the browser. Code: `src/club/` (scene in `Club.ts`, instanced crowd in `people.ts`, LED wall in `screen.ts`, controls in `panel.ts`).
+- **Jump on the decks** (button, top bar or `E`): the resident DJ steps aside and you're behind the booth with the full decks, mixer, USB browser and record crates, looking over your gear at the crowd. Your gear choice (CDJs, turntables or both) is on the booth and mirrors the decks. `Esc` or **Onto the floor** steps back down; the music keeps playing out of the PA.
+- **The room follows your mix.** While a deck is on air, the lights, lasers, LED wall and dancers lock to that deck's beat grid and tempo (the light desk shows `BPM · deck A`). The crowd's energy follows the bass: they ease off in breakdowns, and when the bass slams back after two bars or more the club fires its drop. With nothing on air they stand and wait, and the lights run on the desk's own tempo.
+- **Light desk** in the top bar opens the controls as a drawer while you're on the decks.
+- Settings persist in the browser. Code: `src/club/` (scene in `Club.ts`, instanced crowd in `people.ts`, LED wall in `screen.ts`, controls in `panel.ts`, the React wrapper in `ClubView.tsx`). The page is the game itself (`<App venue="club" />`), so lessons, rep and keys work the same; **The club** / **Bedroom** in the top bar switch venues.
 
 ## Phase 1 — playable decks
 

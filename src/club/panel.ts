@@ -25,7 +25,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
 }
 
 /** The club's control desk: a side panel on desktop, a bottom sheet on phones. */
-export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings): void {
+export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings): { panel: HTMLElement; setOpen: (open: boolean) => void } {
   let state = { ...initial };
   const syncs: (() => void)[] = [];
   const set = <K extends Key>(k: K, v: ClubSettings[K]) => {
@@ -69,8 +69,14 @@ export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings)
     if (!state.playing) set('playing', true);
     club.drop();
   };
+  let liveNote: HTMLElement | null = null;
   const tick = () => {
     const p = club.phase;
+    // the readout shows whatever the room is following: your mix, or the light desk's tempo
+    bpmVal.textContent = club.clock.live ? club.clock.bpm.toFixed(1) : String(state.bpm);
+    bpm.classList.toggle('live', club.clock.live);
+    bpmUnit.textContent = club.clock.live ? `BPM · deck ${club.clock.deck}` : 'BPM';
+    if (liveNote) liveNote.textContent = club.clock.live ? 'Following your mix: the lights and crowd lock to the deck on air.' : 'No deck on air: the lights run at this tempo.';
     drop.textContent = p === 'build' ? 'Building…' : p === 'drop' ? 'Drop!' : 'Drop';
     drop.classList.toggle('live', p !== 'none');
     requestAnimationFrame(tick);
@@ -165,7 +171,8 @@ export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings)
   // ---------- the show
   const show = section('Show');
   slider(show, 'Tempo', 'bpm', 90, 180, 1, (v) => `${v}`);
-  syncs.push(() => (bpmVal.textContent = String(state.bpm)));
+  liveNote = el('p', 'club-note');
+  show.append(liveNote);
 
   const crowd = section('Crowd');
   slider(crowd, 'People', 'crowd', 0, CAPACITY, 1, (v) => `${v}/${CAPACITY}`);
@@ -273,4 +280,5 @@ export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings)
   if (window.matchMedia('(max-width: 720px)').matches) panel.classList.add('collapsed');
 
   syncs.forEach((f) => f());
+  return { panel, setOpen: (open: boolean) => panel.classList.toggle('desk-open', open) };
 }

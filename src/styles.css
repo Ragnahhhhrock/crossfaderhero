@@ -45,6 +45,8 @@ kbd { font: 12px var(--font-lcd); background: var(--surface-sunken); border: 1px
 .brand { display: flex; align-items: center; gap: var(--space-5); }
 .wordmark { font-weight: var(--weight-bold); font-size: var(--type-brand); letter-spacing: 0.02em; }
 .venue { color: var(--text-2); font-size: 13px; padding-left: var(--space-5); border-left: 1px solid var(--border); }
+.venue-switch { color: var(--text-3); font-size: var(--type-small); text-decoration: none; border: 1px solid var(--border); border-radius: var(--radius-chip); padding: 2px var(--space-4); }
+.venue-switch:hover { color: var(--text); border-color: var(--text-3); }
 .topbar-right { display: flex; gap: var(--space-4); align-items: center; }
 .zoom { display: flex; gap: var(--space-1); }
 

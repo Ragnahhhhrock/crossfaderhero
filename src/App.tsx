@@ -11,6 +11,7 @@ import { MixerPanel } from './ui/MixerPanel';
 import { PhaseMeter, ScrollingWaveform } from './ui/waveforms';
 import { setUiPaused, usePlayer, usePolled } from './ui/hooks';
 import { RoomView } from './room/RoomView';
+import { ClubView } from './club/ClubView';
 import type { Mode } from './room/Room';
 import { startCoach } from './career/coach';
 import { useCareer } from './career/store';
@@ -228,15 +229,21 @@ function Toasts() {
   );
 }
 
-export default function App() {
+export type Venue = 'bedroom' | 'club';
+
+export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
+  const club = venue === 'club';
+  const [deskOpen, setDeskOpen] = useState(false);
   const [help, setHelp] = useState(false);
   const [lessonsOpen, setLessonsOpen] = useState(false);
   const onboarded = useCareer((s) => s.onboarded);
   const gear = useSetup((s) => s.gear);
   const [gearOpen, setGearOpen] = useState(false);
-  const modal = help || lessonsOpen || !onboarded || gear === null || gearOpen;
-  const [zoom, setZoom] = useState(1);
   const [mode, setMode] = useState<Mode>('room');
+  // in the club the first-visit questions wait until you jump on the decks
+  const askSetup = !club || mode === 'booth';
+  const modal = help || lessonsOpen || (askSetup && (!onboarded || gear === null)) || gearOpen;
+  const [zoom, setZoom] = useState(1);
   setUiPaused(mode === 'room');
   const [usbOpen, setUsbOpenRaw] = useState(false);
   const [crateOpen, setCrateOpenRaw] = useState(false);
@@ -323,18 +330,29 @@ export default function App() {
   }, [drawerOpen, modal]);
 
   return (
-    <div className={`app mode-${mode}`}>
-      <RoomView
-        mode={mode}
-        onModeChange={setMode}
-        boothCentre={boothCentre}
-        blockKeys={modal || drawerOpen}
-        gear={gear ?? 'cdj'}
-        onOpenCrate={() => {
-          setMode('booth');
-          setCrateOpen(true);
-        }}
-      />
+    <div className={`app mode-${mode} venue-${venue}`}>
+      {club ? (
+        <ClubView
+          mode={mode}
+          onModeChange={setMode}
+          boothCentre={boothCentre}
+          blockKeys={modal || drawerOpen}
+          gear={gear ?? 'cdj'}
+          deskOpen={deskOpen}
+        />
+      ) : (
+        <RoomView
+          mode={mode}
+          onModeChange={setMode}
+          boothCentre={boothCentre}
+          blockKeys={modal || drawerOpen}
+          gear={gear ?? 'cdj'}
+          onOpenCrate={() => {
+            setMode('booth');
+            setCrateOpen(true);
+          }}
+        />
+      )}
 
       <header className="topbar">
         <div className="brand">
@@ -344,7 +362,10 @@ export default function App() {
             <rect x="25" y="28" width="14" height="8" rx="2" fill="var(--text)" />
           </svg>
           <span className="wordmark">Crossfader Hero</span>
-          <span className="venue">Your bedroom</span>
+          <span className="venue">{club ? 'The club' : 'Your bedroom'}</span>
+          <a className="venue-switch" href={club ? '/' : '/club'} title={club ? 'Back to your bedroom' : 'Play the club'}>
+            {club ? 'Bedroom' : 'The club'}
+          </a>
         </div>
         <div className="topbar-right">
           <CareerChip onOpen={() => setLessonsOpen(true)} />
@@ -371,6 +392,11 @@ export default function App() {
               )}
             </>
           )}
+          {club && mode === 'booth' && (
+            <button className={`tiny ${deskOpen ? 'on' : ''}`} onClick={() => setDeskOpen((o) => !o)} aria-expanded={deskOpen} title="Lights, lasers, smoke and the LED wall">
+              Light desk
+            </button>
+          )}
           <button className="tiny" onClick={() => setGearOpen(true)} title="CDJs, turntables or both">
             Gear
           </button>
@@ -379,11 +405,11 @@ export default function App() {
           </button>
           {mode === 'booth' ? (
             <button className="tiny" onClick={() => setMode('room')} title="Esc">
-              Step back
+              {club ? 'Onto the floor' : 'Step back'}
             </button>
           ) : (
-            <button className="tiny" onClick={() => setMode('booth')} title="E, when you're at the desk">
-              Go to the decks
+            <button className="tiny" onClick={() => setMode('booth')} title={club ? 'E' : "E, when you're at the desk"}>
+              {club ? 'Jump on the decks' : 'Go to the decks'}
             </button>
           )}
         </div>
@@ -423,9 +449,13 @@ export default function App() {
       <Toasts />
       {help && <Help onClose={() => setHelp(false)} />}
       {lessonsOpen && <LessonsModal onClose={() => setLessonsOpen(false)} />}
-      {gear === null ? <GearPicker /> : <Welcome />}
+      {askSetup && (gear === null ? <GearPicker /> : <Welcome />)}
       {gearOpen && gear !== null && <GearPicker onClose={() => setGearOpen(false)} />}
-      <div className="small-screen">Crossfader Hero needs a screen at least 1100 px wide. Open it on a laptop or desktop.</div>
+      {(!club || mode === 'booth') && (
+        <div className="small-screen">
+          {club ? 'DJing in the club needs a screen at least 1100 px wide. Open it on a laptop or desktop to play; the light show works here.' : 'Crossfader Hero needs a screen at least 1100 px wide. Open it on a laptop or desktop.'}
+        </div>
+      )}
     </div>
   );
 }

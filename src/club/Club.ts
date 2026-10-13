@@ -6,7 +6,13 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { alpha, hex } from '../design/tokens';
-import { buildCdj, buildMixer, buildSpeaker, type SpeakerModel } from '../room/models';
+import { buildCdj, buildMixer, buildSpeaker, type CdjModel, type MixerModel, type SpeakerModel } from '../room/models';
+import { buildTurntable, TT, type TurntableModel } from '../room/turntableModel';
+import { engine } from '../audio/engine';
+import { peakDb } from '../audio/mixer';
+import { beatAt } from '../audio/grid';
+import type { Gear } from '../state/setup';
+import type { DeckId } from '../types';
 import { CAPACITY, PALETTES, type CameraView, type ClubSettings } from './settings';
 import { crowdSlots, Figures, type Person } from './people';
 import { LedWall } from './screen';
@@ -17,6 +23,20 @@ const STAGE = { x: 5.5, z0: -9, z1: -5, h: 1.0 };
 const FLOOR = { x0: -4.5, x1: 4.5, z0: -4.2, z1: 3 }; // ~65 m², 50 people with room to dance
 const TRUSS_Y = 5.35;
 const BOOTH_Z = -6.3;
+
+export type ClubMode = 'room' | 'booth';
+
+/** Where you stand when you jump on the decks: behind them, looking over the gear at the crowd. */
+const BOOTH_POSE = { pos: new THREE.Vector3(0, 2.86, BOOTH_Z - 0.95), target: new THREE.Vector3(0, 1.6, BOOTH_Z + 4.1) };
+
+/** What the club's clock is following right now. */
+export interface ClubClock {
+  /** true while a deck is playing on air: lights and crowd follow your mix. */
+  live: boolean;
+  bpm: number;
+  /** Which deck is leading, while live. */
+  deck: DeckId | null;
+}
 
 const VIEWS: Record<CameraView, { pos: THREE.Vector3; target: THREE.Vector3 }> = {
   floor: { pos: new THREE.Vector3(1.4, 1.7, 5.8), target: new THREE.Vector3(0, 2.6, -6) },
@@ -134,13 +154,35 @@ export class Club {
   private wallMesh!: THREE.Mesh;
   private speakers: SpeakerModel[] = [];
 
+  private boothGear = new THREE.Group();
+  private cdjModels: { A: CdjModel; B: CdjModel } | null = null;
+  private ttModels: { A: TurntableModel; B: TurntableModel } | null = null;
+  private mixerModel!: MixerModel;
+  private gear: Gear = 'cdj';
+
+  /** 'booth' once you've jumped on the decks. */
+  mode: ClubMode = 'room';
+  /** You've been on the decks: the resident DJ has handed over and the crowd follows your music. */
+  private takenOver = false;
+  private orbitReturn: { pos: THREE.Vector3; target: THREE.Vector3 } | null = null;
+  private viewCentre = 0.5;
+  private boothCentre = 0.3;
+  private centreMove: { from: number; to: number } | null = null;
+  private width = 1;
+  private height = 1;
+  readonly clock: ClubClock = { live: false, bpm: 128, deck: null };
+  private bassAvg = 0;
+  private quietBeats = 0;
+  private lastBeats = 0;
+
   private crowd: Figures;
   private dancers: Figures;
   private dj: Figures;
   private dot = softDot();
   private tmpColor = new THREE.Color();
 
-  constructor(container: HTMLElement, settings: ClubSettings) {
+  constructor(container: HTMLElement, settings: ClubSettings, gear: Gear = 'cdj') {
+    this.gear = gear;
     this.settings = settings;
     const r = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     r.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
@@ -207,7 +249,7 @@ export class Club {
     this.settings = s;
     this.crowd.setCount(s.crowd);
     this.podiums.visible = s.dancers;
-    this.controls.autoRotate = s.autoOrbit;
+    this.controls.autoRotate = s.autoOrbit && this.mode === 'room';
     if (viewChanged && s.autoOrbit) this.controls.target.set(0, 1.8, -1.5);
   }
 
@@ -225,6 +267,7 @@ export class Club {
   }
 
   setView(v: CameraView): void {
+    if (this.mode === 'booth') return;
     this.controls.autoRotate = false;
     this.camMove = {
       from: this.camera.position.clone(),
@@ -359,19 +402,10 @@ export class Club {
     this.ledStrips.push(facade);
     this.box(2.4, 0.06, 0.02, facade, 0, 0.75, 0.43, booth);
     this.box(2.4, 0.06, 0.02, facade, 0, 0.25, 0.43, booth);
-    const gear = new THREE.Group();
-    gear.position.set(0, 1.0, 0);
-    gear.rotation.y = Math.PI; // the gear's front edge faces the DJ, behind the booth
-    booth.add(gear);
-    const a = buildCdj('A', 'deck-a');
-    a.group.position.x = -0.5;
-    a.showcase();
-    const b = buildCdj('B', 'deck-b');
-    b.group.position.x = 0.5;
-    b.showcase();
-    const mixer = buildMixer();
-    gear.add(a.group, b.group, mixer.group);
-    mixer.meterMats.forEach((col) => col.forEach((m, i) => (m.emissiveIntensity = i < 7 ? 1.5 : 0)));
+    this.boothGear.position.set(0, 1.0, 0);
+    this.boothGear.rotation.y = Math.PI; // the gear's front edge faces the DJ, behind the booth
+    booth.add(this.boothGear);
+    this.buildGear();
     const lamp = new THREE.PointLight(hex('room-lamp-hot'), 1.2, 2.5, 1.5);
     lamp.position.set(0, 1.7, -0.3);
     booth.add(lamp);
@@ -387,6 +421,140 @@ export class Club {
         this.speakers.push(spk);
       }
     }
+    // the mixer's left and right outputs come out of the top cabinets
+    this.scene.updateMatrixWorld(true);
+    this.speakers
+      .filter((_, i) => i % 2 === 1)
+      .forEach((spk, i) => {
+        const mouth = spk.mouth.clone();
+        spk.group.localToWorld(mouth);
+        const facing = new THREE.Vector3(0, 0, 1).applyQuaternion(spk.group.quaternion);
+        engine.mixer.placeSpeaker(i as 0 | 1, mouth, facing);
+      });
+    // a club PA carries: it stays loud right across the room
+    for (const p of engine.mixer.speakers) {
+      p.refDistance = 5;
+      p.rolloffFactor = 0.45;
+      p.coneOuterGain = 0.6;
+    }
+  }
+
+  /** CDJs, turntables or both on the booth, laid out like the bedroom desk. */
+  private buildGear(): void {
+    const g = this.boothGear;
+    for (const c of [...g.children]) g.remove(c);
+    this.mixerModel = buildMixer();
+    g.add(this.mixerModel.group);
+    this.cdjModels = null;
+    this.ttModels = null;
+    const cdjX = 0.305;
+    if (this.gear !== 'vinyl') {
+      this.cdjModels = { A: buildCdj('A', 'deck-a'), B: buildCdj('B', 'deck-b') };
+      this.cdjModels.A.group.position.x = -cdjX;
+      this.cdjModels.B.group.position.x = cdjX;
+      g.add(this.cdjModels.A.group, this.cdjModels.B.group);
+    }
+    if (this.gear !== 'cdj') {
+      const inner = this.gear === 'both' ? cdjX + 0.16 : 0.135;
+      const ttX = inner + 0.02 + TT.w / 2;
+      this.ttModels = { A: buildTurntable('A', 'deck-a'), B: buildTurntable('B', 'deck-b') };
+      this.ttModels.A.group.position.set(-ttX, 0, 0.02);
+      this.ttModels.B.group.position.set(ttX, 0, 0.02);
+      g.add(this.ttModels.A.group, this.ttModels.B.group);
+    }
+    if (!this.takenOver) {
+      // the resident DJ is mid-set
+      this.cdjModels?.A.showcase();
+      this.cdjModels?.B.showcase();
+      this.mixerModel.meterMats.forEach((col) => col.forEach((m, i) => (m.emissiveIntensity = i < 7 ? 1.5 : 0)));
+    }
+  }
+
+  setGear(gear: Gear): void {
+    if (gear === this.gear) return;
+    this.gear = gear;
+    this.buildGear();
+  }
+
+  // ---------------------------------------------------------------- the decks
+
+  /** Jump on the decks: the resident DJ steps aside and the camera drops in behind the gear. */
+  stepUp(): void {
+    if (this.mode === 'booth') return;
+    this.mode = 'booth';
+    if (!this.takenOver) {
+      this.takenOver = true;
+      this.dj.group.visible = false;
+    }
+    this.orbitReturn = { pos: this.camera.position.clone(), target: this.controls.target.clone() };
+    this.controls.enabled = false;
+    this.controls.autoRotate = false;
+    this.moveCamera(BOOTH_POSE.pos, BOOTH_POSE.target);
+    this.centreMove = { from: this.viewCentre, to: this.boothCentre };
+  }
+
+  /** Back onto the floor, where you were. */
+  stepBack(): void {
+    if (this.mode === 'room') return;
+    this.mode = 'room';
+    this.controls.enabled = true;
+    const back = this.orbitReturn ?? { pos: VIEWS.floor.pos, target: VIEWS.floor.target };
+    this.moveCamera(back.pos, back.target);
+    this.centreMove = { from: this.viewCentre, to: 0.5 };
+    this.controls.autoRotate = this.settings.autoOrbit;
+  }
+
+  /** Where the booth controls leave room to see the gear (fraction of the screen height). */
+  setBoothCentre(fraction: number): void {
+    this.boothCentre = fraction;
+    if (this.mode === 'booth' && !this.camMove) {
+      this.viewCentre = fraction;
+      this.applyViewCentre();
+    }
+  }
+
+  private moveCamera(pos: THREE.Vector3, target: THREE.Vector3): void {
+    this.camMove = { from: this.camera.position.clone(), to: pos.clone(), tFrom: this.controls.target.clone(), tTo: target.clone(), start: performance.now() / 1000 };
+  }
+
+  /** Shift the projection so the camera's centre lands at `viewCentre` on screen (as in the bedroom). */
+  private applyViewCentre(): void {
+    const W = this.width;
+    const H = this.height;
+    const baseFov = W / H < 0.8 ? 75 : 62; // a wider lens on phones held upright
+    const yc = this.viewCentre * H;
+    let Hv = H;
+    if (Math.abs(yc - H / 2) < 0.5) this.camera.clearViewOffset();
+    else if (yc < H / 2) {
+      Hv = 2 * (H - yc);
+      this.camera.setViewOffset(W, Hv, 0, Hv - H, W, H);
+    } else {
+      Hv = 2 * yc;
+      this.camera.setViewOffset(W, Hv, 0, 0, W, H);
+    }
+    this.camera.aspect = W / Hv;
+    this.camera.fov = (2 * Math.atan(Math.tan((baseFov * Math.PI) / 360) * (Hv / H)) * 180) / Math.PI;
+    this.camera.updateProjectionMatrix();
+  }
+
+  /** The on-air deck that's leading the room, if any is audible. */
+  private musicSource(): { beat: number; bpm: number; deck: DeckId } | null {
+    const mx = engine.mixer;
+    if (engine.ctx.state !== 'running') return null;
+    let best: { beat: number; bpm: number; deck: DeckId } | null = null;
+    let bestLevel = -Infinity;
+    for (const id of ['A', 'B'] as DeckId[]) {
+      const p = engine.player(id);
+      const g = p.grid;
+      if (!p.loaded || !p.playing || !g || !mx.onAir(id)) continue;
+      const level = peakDb(mx.channels[id].meter);
+      if (level > bestLevel) {
+        bestLevel = level;
+        best = { beat: beatAt(g, p.position) - g.downbeat, bpm: p.bpm, deck: id };
+      }
+    }
+    if (!best || peakDb(mx.masterMeterL) < -48) return null;
+    return best;
   }
 
   private makeBeam(parent: THREE.Object3D, spread: number, withSpot: boolean): Beam {
@@ -616,13 +784,13 @@ export class Club {
   private resize(el: HTMLElement): void {
     const w = el.clientWidth || 1;
     const h = el.clientHeight || 1;
+    this.width = w;
+    this.height = h;
     this.renderer.setSize(w, h, false);
     this.composer.setSize(w, h);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.bloom.resolution.set(w / 2, h / 2);
-    this.camera.aspect = w / h;
-    this.camera.fov = w / h < 0.8 ? 75 : 62; // a wider lens on phones held upright
-    this.camera.updateProjectionMatrix();
+    this.applyViewCentre();
   }
 
   /** Light colour for fixture i at this moment. */
@@ -666,24 +834,69 @@ export class Club {
   }
 
   private frame(time: number): void {
+    // behind the decks the club is a backdrop to the controls: 30 fps is plenty
+    if (this.mode === 'booth' && !this.camMove && time - this.lastT < 0.03) return;
     const dt = Math.min(0.1, time - (this.lastT || time));
     this.lastT = time;
-    const s = this.settings;
-    this.beats += s.playing ? (dt * s.bpm) / 60 : dt * 0.25;
+    const s = { ...this.settings };
+    const mx = engine.mixer;
+
+    // the clock: your mix when a deck is on air, otherwise the light desk's own tempo
+    const src = this.takenOver ? this.musicSource() : null;
+    this.clock.live = !!src;
+    this.clock.deck = src?.deck ?? null;
+    if (src) {
+      this.beats = src.beat;
+      this.clock.bpm = src.bpm;
+      s.playing = true;
+    } else {
+      this.beats += s.playing ? (dt * s.bpm) / 60 : dt * 0.25;
+      this.clock.bpm = s.bpm;
+    }
     const beats = this.beats;
-    const ph = beats % 1;
-    const kick = s.playing ? Math.pow(1 - ph, 3) : 0;
+    const ph = ((beats % 1) + 1) % 1;
+    const bass = this.takenOver ? mx.bassLevel() : 0;
+    this.bassAvg += (bass - this.bassAvg) * Math.min(1, dt * 3);
+    // with your music the light hits follow the kick drum, not just the grid
+    const kick = s.playing ? Math.pow(1 - ph, 3) * (src ? 0.35 + 0.65 * Math.min(1, bass * 1.6) : 1) : 0;
+
+    // a real drop: the bass comes back after at least two bars without it
+    if (src) {
+      const step = Math.max(0, beats - this.lastBeats);
+      if (this.bassAvg < 0.12) this.quietBeats += Math.min(step, 1);
+      else if (bass > 0.45 && this.quietBeats >= 8 && this.phase === 'none') {
+        this.dropAt = Math.floor(beats);
+        this.quietBeats = 0;
+      } else if (this.bassAvg > 0.3) this.quietBeats = 0;
+    }
+    this.lastBeats = beats;
     const phase = s.playing ? this.phase : 'none';
     const build = phase === 'build' ? (beats - (this.dropAt - 8)) / 8 : 0;
     const dropping = phase === 'drop';
 
-    // the crowd's mood follows the show
+    // the crowd's mood follows the show, and once you're DJing, your music
     let energy = s.playing ? 0.55 + (s.lights ? 0.2 : 0) + (s.lasers ? 0.1 : 0) + (s.strobes ? 0.1 : 0) + (s.screen ? 0.05 : 0) : 0.1;
+    if (this.takenOver) energy = src ? THREE.MathUtils.clamp(0.3 + this.bassAvg * 1.5, 0.25, 1.3) : 0.12;
     if (phase === 'build') energy = 0.2;
     if (dropping) energy = 1.6;
     this.crowd.update(beats, energy, time);
-    this.dancers.update(beats, Math.max(1, energy), time);
-    this.dj.update(beats, s.playing ? energy : 0.1, time);
+    this.dancers.update(beats, Math.max(this.takenOver && !src ? 0.12 : 1, energy), time);
+    if (this.dj.group.visible) this.dj.update(beats, s.playing ? energy : 0.1, time);
+
+    // the booth gear mirrors the decks once they're yours
+    if (this.takenOver) {
+      const now = performance.now();
+      this.cdjModels?.A.update(engine.decks.A, now);
+      this.cdjModels?.B.update(engine.decks.B, now);
+      this.ttModels?.A.update(engine.turntables.A, now);
+      this.ttModels?.B.update(engine.turntables.B, now);
+      this.mixerModel.update(mx);
+      const levels = [peakDb(mx.channels.A.meter), peakDb(mx.masterMeterL), peakDb(mx.masterMeterR), peakDb(mx.channels.B.meter)];
+      this.mixerModel.meterMats.forEach((col, ci) => {
+        const lit = Math.round(((levels[ci] + 30) / 33) * col.length);
+        col.forEach((m, i) => (m.emissiveIntensity = i < lit ? 1.6 : 0.03));
+      });
+    }
 
     const haze = s.smoke ? 0.35 + s.smokeDensity * 0.9 : 0.18;
     const I = s.intensity * (phase === 'build' ? 0.35 + 0.65 * build : 1) * (dropping ? 1.25 : 1);
@@ -870,7 +1083,8 @@ export class Club {
     });
 
     // ---- speaker cones pump with the kick
-    for (const spk of this.speakers) spk.cone.position.z = 0.134 + kick * 0.008;
+    const push = this.takenOver ? bass * bass : kick;
+    for (const spk of this.speakers) spk.cone.position.z = 0.134 + push * 0.01;
 
     // ---- smoke drifts off the stage and across the floor
     this.smoke.visible = s.smoke;
@@ -898,9 +1112,20 @@ export class Club {
       const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
       this.camera.position.lerpVectors(this.camMove.from, this.camMove.to, e);
       this.controls.target.lerpVectors(this.camMove.tFrom, this.camMove.tTo, e);
-      if (k >= 1) this.camMove = null;
+      if (this.centreMove) {
+        this.viewCentre = this.centreMove.from + (this.centreMove.to - this.centreMove.from) * e;
+        this.applyViewCentre();
+      }
+      if (k >= 1) {
+        this.camMove = null;
+        this.centreMove = null;
+      }
     }
-    this.controls.update();
+    if (this.mode === 'booth') this.camera.lookAt(this.controls.target);
+    else this.controls.update();
+    const fwd = new THREE.Vector3();
+    this.camera.getWorldDirection(fwd);
+    if (this.takenOver) mx.setListener(this.camera.position, fwd); // your ears follow the camera
     const p = this.camera.position;
     p.x = THREE.MathUtils.clamp(p.x, -V.w / 2 + 0.3, V.w / 2 - 0.3);
     p.y = THREE.MathUtils.clamp(p.y, 0.4, V.h - 0.3);
