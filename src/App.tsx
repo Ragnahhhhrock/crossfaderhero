@@ -9,12 +9,17 @@ import { Browser } from './ui/Browser';
 import { DeckPanel } from './ui/DeckPanel';
 import { MixerPanel } from './ui/MixerPanel';
 import { PhaseMeter, ScrollingWaveform } from './ui/waveforms';
-import { setUiPaused, usePolled } from './ui/hooks';
+import { setUiPaused, usePlayer, usePolled } from './ui/hooks';
 import { RoomView } from './room/RoomView';
 import type { Mode } from './room/Room';
 import { startCoach } from './career/coach';
 import { useCareer } from './career/store';
 import { CareerChip, Coach, LessonsModal, Welcome } from './ui/Career';
+import { TurntablePanel } from './ui/TurntablePanel';
+import { Crates } from './ui/Crates';
+import { GearPicker } from './ui/GearPicker';
+import { initSetup, useSetup } from './state/setup';
+import type { Turntable } from './audio/turntable';
 
 interface DeckKeys {
   cue: string;
@@ -51,8 +56,30 @@ function useKeyboard(toggleHelp: () => void, deckKeysOn: boolean) {
       if (k === 'arrowright') return void (e.preventDefault(), m.setCrossfader(m.crossfader + 0.05));
       if (k === 'arrowdown') return void (e.preventDefault(), m.setCrossfader(0.5));
       for (const id of ['A', 'B'] as DeckId[]) {
-        const d = engine.decks[id];
         const map = KEYS[id];
+        if (engine.player(id).kind === 'turntable') {
+          const tt = engine.player(id) as Turntable;
+          if (e.repeat && key !== map.slower && key !== map.faster) {
+            if ([map.cue, map.nudgeBack, map.nudgeFwd].includes(key)) e.preventDefault();
+            continue;
+          }
+          const step = tt.range === 8 ? 0.0005 : 0.001;
+          if (key === map.cue) {
+            held.add(key);
+            tt.grab();
+          } else if (key === map.play) tt.toggleStart();
+          else if (key === map.hot[0]) tt.toggleNeedle();
+          else if (key === map.slower) tt.setPitch(tt.pitch - step);
+          else if (key === map.faster) tt.setPitch(tt.pitch + step);
+          else if (key === map.nudgeBack) tt.setNudge(-0.5);
+          else if (key === map.nudgeFwd) tt.setNudge(0.5);
+          else if (key === map.loop) tt.setRpm(tt.rpm === 33 ? 45 : 33);
+          else continue;
+          engine.resume();
+          e.preventDefault();
+          return;
+        }
+        const d = engine.decks[id];
         if (e.repeat && key !== map.slower && key !== map.faster) {
           if ([map.cue, map.nudgeBack, map.nudgeFwd].includes(key)) e.preventDefault();
           continue;
@@ -80,6 +107,16 @@ function useKeyboard(toggleHelp: () => void, deckKeysOn: boolean) {
       const k = e.key.toLowerCase();
       for (const id of ['A', 'B'] as DeckId[]) {
         const map = KEYS[id];
+        const p = engine.player(id);
+        if (p.kind === 'turntable') {
+          const tt = p as Turntable;
+          if (k === map.cue && held.has(k)) {
+            held.delete(k);
+            tt.release();
+          }
+          if (k === map.nudgeBack || k === map.nudgeFwd) tt.setNudge(0);
+          continue;
+        }
         const d = engine.decks[id];
         if (k === map.cue && held.has(k)) {
           held.delete(k);
@@ -135,8 +172,28 @@ function Help({ onClose }: { onClose: () => void }) {
           </tbody>
         </table>
         <p>Crossfader: <kbd>←</kbd> <kbd>→</kbd>, <kbd>↓</kbd> to centre. Knobs and faders: drag, scroll or arrow keys; double-click resets; hold Shift for fine control.</p>
-        <h3>Vinyl mode</h3>
-        <p>Press Vinyl on a deck, then hold the jog wheel to grab the record and drag it back and forth to scratch.</p>
+        <h3>Turntables</h3>
+        <p>
+          Pull a record from the <strong>Record crates</strong> and put it on a turntable. Press <strong>Start</strong> to spin the platter,
+          then drag the tonearm onto the record (or press <strong>Drop</strong>) to lower the needle — the lighter bands in the grooves are
+          quiet passages and breaks. Hold the record to stop it under your hand and drag it round to scratch; let go and the slipmat
+          carries it on. Drag the platter edge to nudge it into time.
+        </p>
+        <table className="keys">
+          <thead>
+            <tr><th /><th scope="col">Turntable A</th><th scope="col">Turntable B</th></tr>
+          </thead>
+          <tbody>
+            {row('Hand on the record (hold)', 'Z', 'M')}
+            {row('Start / Stop', 'X', ',')}
+            {row('Cue lever: drop / lift the needle', '1', '7')}
+            {row('Pitch down / up', 'Q / W', 'O / P')}
+            {row('Drag / push the platter (hold)', 'A / S', 'K / L')}
+            {row('33 / 45 RPM', 'E', 'I')}
+          </tbody>
+        </table>
+        <h3>Vinyl mode on the CDJs</h3>
+        <p>Press Vinyl on a CDJ, then hold the jog wheel to grab the record and drag it back and forth to scratch.</p>
         <h3>How to beatmatch</h3>
         <ol>
           <li>Play deck A with its fader up. Load the next track on deck B with B's fader down.</li>
@@ -149,6 +206,12 @@ function Help({ onClose }: { onClose: () => void }) {
       </div>
     </div>
   );
+}
+
+/** Each side of the booth shows whatever its mixer channel is switched to. */
+function SidePanel({ id }: { id: DeckId }) {
+  const p = usePlayer(id);
+  return p.kind === 'turntable' ? <TurntablePanel id={id} /> : <DeckPanel id={id} />;
 }
 
 function Toasts() {
@@ -169,20 +232,42 @@ export default function App() {
   const [help, setHelp] = useState(false);
   const [lessonsOpen, setLessonsOpen] = useState(false);
   const onboarded = useCareer((s) => s.onboarded);
-  const modal = help || lessonsOpen || !onboarded;
+  const gear = useSetup((s) => s.gear);
+  const [gearOpen, setGearOpen] = useState(false);
+  const modal = help || lessonsOpen || !onboarded || gear === null || gearOpen;
   const [zoom, setZoom] = useState(1);
   const [mode, setMode] = useState<Mode>('room');
   setUiPaused(mode === 'room');
-  const [usbOpen, setUsbOpen] = useState(false);
+  const [usbOpen, setUsbOpenRaw] = useState(false);
+  const [crateOpen, setCrateOpenRaw] = useState(false);
+  // one drawer at a time
+  const setUsbOpen = (v: boolean | ((o: boolean) => boolean)) => {
+    setUsbOpenRaw((o) => {
+      const n = typeof v === 'function' ? v(o) : v;
+      if (n) setCrateOpenRaw(false);
+      return n;
+    });
+  };
+  const setCrateOpen = (v: boolean | ((o: boolean) => boolean)) => {
+    setCrateOpenRaw((o) => {
+      const n = typeof v === 'function' ? v(o) : v;
+      if (n) setUsbOpenRaw(false);
+      return n;
+    });
+  };
+  const drawerOpen = usbOpen || crateOpen;
   const [boothCentre, setBoothCentre] = useState(0.3);
   const gap = useRef<HTMLDivElement>(null);
   const suspended = usePolled(() => engine.ctx.state !== 'running');
-  const nothingLoaded = usePolled(() => !engine.decks.A.loaded && !engine.decks.B.loaded);
-  useKeyboard(() => setHelp((h) => !h), mode === 'booth' && !modal && !usbOpen);
+  const nothingLoaded = usePolled(
+    () => !engine.decks.A.loaded && !engine.decks.B.loaded && !engine.turntables.A.loaded && !engine.turntables.B.loaded,
+  );
+  useKeyboard(() => setHelp((h) => !h), mode === 'booth' && !modal && !drawerOpen);
 
   useEffect(() => {
     startAnalytics();
     void useLibrary.getState().init();
+    initSetup();
     startCoach();
     const unlock = () => engine.resume();
     window.addEventListener('pointerdown', unlock, { once: true });
@@ -196,10 +281,16 @@ export default function App() {
     track('view_change', { view: mode });
   }, [mode]);
 
-  // open the USB browser on the first visit to the decks
+  // open the USB browser (or the crates, on an all-vinyl desk) on the first visit to the decks
   useEffect(() => {
-    if (mode === 'booth' && nothingLoaded) setUsbOpen(true);
-    if (mode === 'room') setUsbOpen(false);
+    if (mode === 'booth' && nothingLoaded) {
+      if (gear === 'vinyl') setCrateOpen(true);
+      else setUsbOpen(true);
+    }
+    if (mode === 'room') {
+      setUsbOpen(false);
+      setCrateOpen(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
@@ -217,21 +308,33 @@ export default function App() {
     return () => ro.disconnect();
   }, []);
 
-  // Escape closes the USB drawer before it steps back from the decks
+  // Escape closes a drawer before it steps back from the decks
   useEffect(() => {
     const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && usbOpen && !modal) {
+      if (e.key === 'Escape' && drawerOpen && !modal) {
         e.stopImmediatePropagation();
         setUsbOpen(false);
+        setCrateOpen(false);
       }
     };
     window.addEventListener('keydown', esc, true);
     return () => window.removeEventListener('keydown', esc, true);
-  }, [usbOpen, modal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerOpen, modal]);
 
   return (
     <div className={`app mode-${mode}`}>
-      <RoomView mode={mode} onModeChange={setMode} boothCentre={boothCentre} blockKeys={modal || usbOpen} />
+      <RoomView
+        mode={mode}
+        onModeChange={setMode}
+        boothCentre={boothCentre}
+        blockKeys={modal || drawerOpen}
+        gear={gear ?? 'cdj'}
+        onOpenCrate={() => {
+          setMode('booth');
+          setCrateOpen(true);
+        }}
+      />
 
       <header className="topbar">
         <div className="brand">
@@ -256,11 +359,21 @@ export default function App() {
                 <button className="tiny" onClick={() => setZoom((z) => Math.max(0.5, z / 1.5))} aria-label="Zoom out">−</button>
                 <button className="tiny" onClick={() => setZoom((z) => Math.min(4, z * 1.5))} aria-label="Zoom in">+</button>
               </div>
-              <button className={`tiny ${usbOpen ? 'on' : ''}`} onClick={() => setUsbOpen((o) => !o)} aria-expanded={usbOpen}>
-                USB browser
-              </button>
+              {gear !== 'vinyl' && (
+                <button className={`tiny ${usbOpen ? 'on' : ''}`} onClick={() => setUsbOpen((o) => !o)} aria-expanded={usbOpen}>
+                  USB browser
+                </button>
+              )}
+              {gear !== 'cdj' && gear !== null && (
+                <button className={`tiny ${crateOpen ? 'on' : ''}`} onClick={() => setCrateOpen((o) => !o)} aria-expanded={crateOpen}>
+                  Record crates
+                </button>
+              )}
             </>
           )}
+          <button className="tiny" onClick={() => setGearOpen(true)} title="CDJs, turntables or both">
+            Gear
+          </button>
           <button className="tiny" onClick={() => setHelp(true)}>
             Keys &amp; tips
           </button>
@@ -291,14 +404,18 @@ export default function App() {
         </div>
 
         <main className="booth">
-          <DeckPanel id="A" />
+          <SidePanel id="A" />
           <MixerPanel />
-          <DeckPanel id="B" />
+          <SidePanel id="B" />
         </main>
 
         <div className={`usb-drawer ${usbOpen ? 'open' : ''}`} aria-hidden={!usbOpen}>
           <Browser />
           <button className="tiny drawer-close" onClick={() => setUsbOpen(false)}>Close</button>
+        </div>
+        <div className={`usb-drawer crate-drawer ${crateOpen ? 'open' : ''}`} aria-hidden={!crateOpen}>
+          <Crates />
+          <button className="tiny drawer-close" onClick={() => setCrateOpen(false)}>Close</button>
         </div>
       </div>
 
@@ -306,7 +423,8 @@ export default function App() {
       <Toasts />
       {help && <Help onClose={() => setHelp(false)} />}
       {lessonsOpen && <LessonsModal onClose={() => setLessonsOpen(false)} />}
-      <Welcome />
+      {gear === null ? <GearPicker /> : <Welcome />}
+      {gearOpen && gear !== null && <GearPicker onClose={() => setGearOpen(false)} />}
       <div className="small-screen">Crossfader Hero needs a screen at least 1100 px wide. Open it on a laptop or desktop.</div>
     </div>
   );

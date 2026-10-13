@@ -1,6 +1,6 @@
 # Crossfader Hero
 
-A browser DJ career simulator. Plug your own music into two virtual CDJs, mix on a two-channel mixer, and (in later phases) pick one of two career paths (see [docs/CAREER-PATHS.md](docs/CAREER-PATHS.md)):
+A browser DJ career simulator. Plug your own music into two virtual CDJs or press it to vinyl for two turntables, mix on a two-channel mixer, and (in later phases) pick one of two career paths (see [docs/CAREER-PATHS.md](docs/CAREER-PATHS.md)):
 
 - **Pro DJ** — start as a bedroom DJ and work up to headlining major festivals in packed stadiums.
 - **Battle DJ** — start as a bedroom turntablist, play vinyl on turntables (your MP3s become records in a crate, see [docs/TURNTABLES.md](docs/TURNTABLES.md)), win local mixing contests, then the national and international championships to be crowned the best DJ in the world (see [docs/COMPETITIONS.md](docs/COMPETITIONS.md)).
@@ -27,6 +27,28 @@ You start in a small bedroom: a desk against the wall with two media players, a 
 - **Phase meter** between the waveforms shows where each deck sits in its bar and how many milliseconds apart the beats are.
 - **Keyboard:** press `?` in the app for the full map.
 
+## Your gear: CDJs, turntables or both
+
+At the start you choose what's on the desk (change it any time with **Gear** in the top bar):
+
+- **CDJs** — two media players and a club mixer (above).
+- **Vinyl turntables** — two direct-drive turntables (modelled on the classic battle deck, fictional make) and a battle mixer.
+- **Both** — two CDJs and two turntables on a wider desk. Each mixer channel gets a **CD / Phono** input switch, so you can mix a CDJ into a record or scratch over a track.
+
+**Record crates.** "Choose a folder for a crate" turns a folder of MP3s into a crate of vinyl records: each track gets a sleeve (its cover art, or a generated design), a centre label, and its BPM and key marked on the corner once it's been pressed (analysed). Each folder is its own crate, shown on the floor of the bedroom — click one to open it. Flip through, sort by BPM, key, title, artist or genre, pull a record out and put it on turntable A or B (double-click puts it on a free one). The same record on both decks makes a double for beat juggling.
+
+**Turntables** — simulated in an AudioWorklet that reads the record sample by sample at whatever speed the platter physics gives it:
+
+- Start/Stop with real spin-up and electronic brake (both adjustable), and a power switch for the slow power-down.
+- 33 / 45 RPM and a pitch fader (±8 / ±16 %). No sync and no key lock: beatmatch by ear and hand.
+- The record sits on a slipmat: hold it and it stops under your hand while the platter keeps turning; drag it round to scratch (forwards and backwards, locked to your hand); let go and it's pulled back up to speed. Fling it backwards for a back-spin.
+- Drag the platter edge (or scroll) to nudge it slower or faster.
+- Drag the tonearm onto the record to cue it by eye — the grooves are drawn from the track, with quiet passages and breaks as lighter bands — and let go to drop the needle. **Drop / Lift** is the cue lever. A soft needle-drop thump and a touch of surface noise.
+- Strobe dots on the platter edge stand still at exactly 33⅓ or 45 with the pitch at 0.
+- **Assist** shows BPM, time and waveforms; switch it off for the real by-ear experience.
+- The mixer gains a crossfader **Rev** (hamster) switch; the turntable-only setup starts with a sharp cut-in curve.
+- Keys at a turntable: hold `Z`/`M` = hand on the record, `X`/`,` = Start/Stop, `1`/`7` = needle drop/lift, `Q W`/`O P` = pitch, hold `A S`/`K L` = drag/push the platter, `E`/`I` = 33/45.
+
 ## Lessons and career progression
 
 - **Beginner mode.** First visit asks if you're new to DJing. Beginner mode runs guided lessons in a coach card that checks your work on the actual decks (no clicking "next") and offers the next lesson when you finish. Toggle it any time in **Lessons** (top bar).
@@ -38,7 +60,7 @@ You start in a small bedroom: a desk against the wall with two media players, a 
 
 The lesson ladder is a single rep track for now; it will hang off the two career paths ([docs/CAREER-PATHS.md](docs/CAREER-PATHS.md)) once those are built.
 
-Not yet built (see the build plan): key lock / master tempo, scoring, the two career paths, turntables and the battle championships, venues and crowds, the SoundCloud-style platform.
+Not yet built (see the build plan): key lock / master tempo, scoring, the two career paths, the battle championships and scratch scoring, venues and crowds, the SoundCloud-style platform.
 
 ## Develop
 
@@ -69,11 +91,11 @@ Every colour, typeface and measurement comes from `src/design/tokens.css`; `npm 
 
 ```
 src/
-  audio/      engine (AudioContext), Deck (CDJ transport), Mixer (channels, EQ, filter, crossfader, room speakers), grid maths
-  room/       the 3D bedroom (three.js): scene, gear models, procedural textures, first-person view
+  audio/      engine (AudioContext), Deck (CDJ transport), Turntable + its AudioWorklet and platter physics, Mixer (channels, CD/Phono inputs, EQ, filter, crossfader, room speakers), grid maths
+  room/       the 3D bedroom (three.js): scene, gear models (CDJs, mixer, turntables, crates), procedural textures, first-person view
   career/     lessons, tiers and rep, the live coach that checks lesson steps and scores practice mixes
-  library/    USB folder access + scanning, ID3 tags, BPM/beat-grid/key/waveform analysis, worker
-  state/      zustand stores for the library and toasts
+  library/    USB and crate folder access + scanning, ID3 tags, BPM/beat-grid/key/waveform analysis, worker, record sleeves/labels/grooves
+  state/      zustand stores for the library, gear setup and toasts
   ui/         deck, mixer, browser, waveforms, knobs and faders
 test/         vitest unit tests with synthetic audio
 ```

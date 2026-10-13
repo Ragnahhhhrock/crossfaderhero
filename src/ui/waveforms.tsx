@@ -1,9 +1,16 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { engine } from '../audio/engine';
 import { beatAt, beatLength, beatTime } from '../audio/grid';
 import type { Analysis, DeckId } from '../types';
 import { alpha, font, HOT_CUE_TOKENS, token } from '../design/tokens';
-import { useAnimationFrame, useCanvasSize, useDeck } from './hooks';
+import { useAnimationFrame, useCanvasSize, usePlayer } from './hooks';
+import type { Player } from '../audio/player';
+import type { Deck } from '../audio/deck';
+import type { Turntable } from '../audio/turntable';
+
+const asCdj = (p: Player) => (p.kind === 'cdj' ? (p as Deck) : null);
+/** A turntable with its assist display switched off shows no waveforms. */
+const hidden = (p: Player) => p.kind === 'turntable' && !(p as Turntable).assist;
 
 /** CSS colour for hot cue i (A–H), from the design tokens. */
 export const hotCueVar = (i: number) => `var(--${HOT_CUE_TOKENS[i]})`;
@@ -58,7 +65,7 @@ const PX_PER_SEC = 120; // real-time seconds
 
 /** Scrolling waveform with the playhead in the centre, scaled by tempo so beatmatched decks line up. */
 export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
-  const deck = useDeck(id);
+  const deck = usePlayer(id);
   const [ref, w, h] = useCanvasSize();
   const accentToken = id === 'A' ? 'deck-a' : 'deck-b';
 
@@ -72,6 +79,14 @@ export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
     const a = deck.analysis;
     const grid = deck.grid;
     const mid = h / 2;
+    if (hidden(deck)) {
+      g.fillStyle = token('text-3');
+      g.font = font('ui', 12, 500);
+      g.textAlign = 'center';
+      g.fillText(`Turntable ${id}: assist display off — play it by ear`, w / 2, mid + 4);
+      g.textAlign = 'left';
+      return;
+    }
     if (!a || !grid) {
       g.fillStyle = alpha('white', 0.05);
       g.fillRect(0, mid, w, 1);
@@ -83,10 +98,11 @@ export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
     const t1 = pos + (w / 2) * secPerPx;
     const X = (t: number) => (t - t0) / secPerPx;
 
+    const cdj = asCdj(deck);
     // loop
-    if (deck.loop) {
-      g.fillStyle = alpha('cue', deck.loop.active ? 0.16 : 0.06);
-      g.fillRect(X(deck.loop.start), 0, X(deck.loop.end) - X(deck.loop.start), h);
+    if (cdj?.loop) {
+      g.fillStyle = alpha('cue', cdj.loop.active ? 0.16 : 0.06);
+      g.fillRect(X(cdj.loop.start), 0, X(cdj.loop.end) - X(cdj.loop.start), h);
     }
 
     // beat grid
@@ -118,8 +134,10 @@ export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
         g.fillText(label, x + 4, h - 4);
       }
     };
-    marker(deck.cuePoint, token('cue'));
-    deck.hotCues.forEach((t, i) => t !== null && marker(t, token(HOT_CUE_TOKENS[i]), String.fromCharCode(65 + i)));
+    if (cdj) {
+      marker(cdj.cuePoint, token('cue'));
+      cdj.hotCues.forEach((t, i) => t !== null && marker(t, token(HOT_CUE_TOKENS[i]), String.fromCharCode(65 + i)));
+    }
 
     // playhead
     g.fillStyle = alpha('black', 0.5);
@@ -133,7 +151,7 @@ export function ScrollingWaveform({ id, zoom }: { id: DeckId; zoom: number }) {
 
 /** Whole-track overview; click or drag to needle-search. */
 export function OverviewWaveform({ id }: { id: DeckId }) {
-  const deck = useDeck(id);
+  const deck = usePlayer(id);
   const [ref, w, h] = useCanvasSize();
   const image = useRef<HTMLCanvasElement | null>(null);
   const a = deck.analysis;
@@ -169,17 +187,20 @@ export function OverviewWaveform({ id }: { id: DeckId }) {
     const px = X(deck.position);
     g.fillStyle = alpha('graphite-900', 0.55);
     g.fillRect(0, 0, px, h);
-    if (deck.loop) {
+    const cdj = asCdj(deck);
+    if (cdj?.loop) {
       g.fillStyle = alpha('cue', 0.35);
-      g.fillRect(X(deck.loop.start), 0, Math.max(2, X(deck.loop.end) - X(deck.loop.start)), h);
+      g.fillRect(X(cdj.loop.start), 0, Math.max(2, X(cdj.loop.end) - X(cdj.loop.start)), h);
     }
-    g.fillStyle = token('cue');
-    g.fillRect(X(deck.cuePoint), 0, 1.5, h);
-    deck.hotCues.forEach((t, i) => {
-      if (t === null) return;
-      g.fillStyle = token(HOT_CUE_TOKENS[i]);
-      g.fillRect(X(t) - 1, 0, 3, 4);
-    });
+    if (cdj) {
+      g.fillStyle = token('cue');
+      g.fillRect(X(cdj.cuePoint), 0, 1.5, h);
+      cdj.hotCues.forEach((t, i) => {
+        if (t === null) return;
+        g.fillStyle = token(HOT_CUE_TOKENS[i]);
+        g.fillRect(X(t) - 1, 0, 3, 4);
+      });
+    }
     g.fillStyle = token('white');
     g.fillRect(px - 1, 0, 2, h);
   });
@@ -188,14 +209,21 @@ export function OverviewWaveform({ id }: { id: DeckId }) {
     const c = ref.current;
     if (!c || !a) return;
     const r = c.getBoundingClientRect();
-    deck.seek(((clientX - r.left) / r.width) * a.duration);
+    const pos = ((clientX - r.left) / r.width) * a.duration;
+    if (deck.kind === 'cdj') (deck as Deck).seek(pos);
+    else {
+      // needle drop: lands playing if the needle was down, cued up if it was lifted
+      const tt = deck as Turntable;
+      if (tt.needleDown) tt.dropNeedle(pos);
+      else tt.moveNeedle(pos);
+    }
   };
 
   return (
     <canvas
       ref={ref}
       className="overview-wave"
-      aria-label={`Deck ${id} track overview — click to jump`}
+      aria-label={deck.kind === 'turntable' ? `Turntable ${id} record overview — click to drop the needle` : `Deck ${id} track overview — click to jump`}
       onPointerDown={(e) => {
         (e.target as Element).setPointerCapture(e.pointerId);
         dragging.current = true;
@@ -217,10 +245,9 @@ export function PhaseMeter() {
   const segsA = useRef<HTMLDivElement>(null);
   const segsB = useRef<HTMLDivElement>(null);
 
-  const decks = useMemo(() => engine.decks, []);
   useAnimationFrame(() => {
-    const A = decks.A;
-    const B = decks.B;
+    const A = engine.player('A');
+    const B = engine.player('B');
     const update = (el: HTMLDivElement | null, d: typeof A) => {
       if (!el) return;
       const g = d.grid;

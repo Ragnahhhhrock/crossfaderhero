@@ -3,6 +3,8 @@ import { emitAction } from './actions';
 
 export type CrossfaderCurve = 'smooth' | 'sharp';
 export type CueMode = 'off' | 'split';
+/** Each channel's input selector: CD (line, from a CDJ) or Phono (a turntable). */
+export type ChannelInput = 'cd' | 'phono';
 
 const dbToGain = (db: number) => Math.pow(10, db / 20);
 
@@ -33,9 +35,13 @@ export interface ChannelState {
   filter: number; // -1 (low-pass) .. 0 (off) .. +1 (high-pass)
   fader: number; // 0..1
   cue: boolean;
+  input: ChannelInput;
 }
 
 class Channel {
+  /** Line input (CDJ) and phono input (turntable); the selector picks one. */
+  readonly cd: GainNode;
+  readonly phono: GainNode;
   readonly input: GainNode;
   readonly trim: GainNode;
   readonly low: BiquadFilterNode;
@@ -50,6 +56,11 @@ class Channel {
 
   constructor(ctx: AudioContext) {
     this.input = ctx.createGain();
+    this.cd = ctx.createGain();
+    this.phono = ctx.createGain();
+    this.phono.gain.value = 0;
+    this.cd.connect(this.input);
+    this.phono.connect(this.input);
     this.trim = ctx.createGain();
     this.low = ctx.createBiquadFilter();
     this.low.type = 'lowshelf';
@@ -102,10 +113,12 @@ export class Mixer {
   spatial = true;
 
   state: Record<DeckId, ChannelState> = {
-    A: { trim: 0, hi: 0, mid: 0, low: 0, filter: 0, fader: 0.8, cue: false },
-    B: { trim: 0, hi: 0, mid: 0, low: 0, filter: 0, fader: 0.8, cue: false },
+    A: { trim: 0, hi: 0, mid: 0, low: 0, filter: 0, fader: 0.8, cue: false, input: 'cd' },
+    B: { trim: 0, hi: 0, mid: 0, low: 0, filter: 0, fader: 0.8, cue: false, input: 'cd' },
   };
   crossfader = 0.5;
+  /** Reverse ("hamster") switch: swaps which side of the crossfader each channel is on. */
+  reverse = false;
   curve: CrossfaderCurve = 'smooth';
   masterLevel = 0.8; // 0..1
   cueMode: CueMode = 'off';
@@ -236,12 +249,20 @@ export class Mixer {
       this.ramp(c.hpf.frequency, 20 * Math.pow(9000 / 20, f));
       this.ramp(c.lpf.frequency, 22000);
     }
+    c.cd.gain.setTargetAtTime(s.input === 'cd' ? 1 : 0, this.ctx.currentTime, 0.004);
+    c.phono.gain.setTargetAtTime(s.input === 'phono' ? 1 : 0, this.ctx.currentTime, 0.004);
     this.ramp(c.fader.gain, faderGain(s.fader));
     this.ramp(c.cueSend.gain, s.cue ? this.cueLevel : 0);
   }
 
-  private applyCrossfader() {
+  /** Crossfader gains for channels A and B, after the reverse switch. */
+  xfGains(): [number, number] {
     const [a, b] = crossfaderGains(this.crossfader, this.curve);
+    return this.reverse ? [b, a] : [a, b];
+  }
+
+  private applyCrossfader() {
+    const [a, b] = this.xfGains();
     this.ramp(this.channels.A.xfade.gain, a);
     this.ramp(this.channels.B.xfade.gain, b);
   }
@@ -264,6 +285,17 @@ export class Mixer {
     this.applyCrossfader();
     emitAction('crossfader');
     this.changed();
+  }
+
+  setReverse(on: boolean) {
+    this.reverse = on;
+    this.applyCrossfader();
+    this.changed();
+  }
+
+  setInput(id: DeckId, input: ChannelInput) {
+    if (this.state[id].input === input) return;
+    this.set(id, { input });
   }
 
   setCurve(c: CrossfaderCurve) {
@@ -335,7 +367,7 @@ export class Mixer {
 
   /** Is this channel audible on the master right now? */
   onAir(id: DeckId): boolean {
-    const [a, b] = crossfaderGains(this.crossfader, this.curve);
+    const [a, b] = this.xfGains();
     return faderGain(this.state[id].fader) * (id === 'A' ? a : b) > 0.05;
   }
 }

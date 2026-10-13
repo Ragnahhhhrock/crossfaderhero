@@ -3,12 +3,29 @@ import { engine } from '../audio/engine';
 import type { DeckId } from '../types';
 import type { Deck } from '../audio/deck';
 import type { Mixer } from '../audio/mixer';
+import type { Player } from '../audio/player';
+import type { Turntable } from '../audio/turntable';
 
 /** Re-render when the deck's discrete state changes (load, cue, loop…). */
 export function useDeck(id: DeckId): Deck {
   const deck = engine.decks[id];
   useSyncExternalStore(deck.subscribe, deck.getVersion);
   return deck;
+}
+
+export function useTurntable(id: DeckId): Turntable {
+  const t = engine.turntables[id];
+  useSyncExternalStore(t.subscribe, t.getVersion);
+  return t;
+}
+
+/** Whatever channel `id`'s input selector points at (CDJ or turntable), re-rendering on its changes. */
+export function usePlayer(id: DeckId): Player {
+  const m = engine.mixer;
+  useSyncExternalStore(m.subscribe, () => m.state[id].input);
+  const p = engine.player(id);
+  useSyncExternalStore(p.subscribe, p.getVersion);
+  return p;
 }
 
 export function useMixer(): Mixer {

@@ -3,6 +3,7 @@ import { engine } from '../audio/engine';
 import { onAction } from '../audio/actions';
 import { beatInBar, beatLength, phaseOffset } from '../audio/grid';
 import type { Deck } from '../audio/deck';
+import type { Player } from '../audio/player';
 import { toast } from '../state/toasts';
 import type { DeckId } from '../types';
 import { LESSONS, lessonById } from './lessons';
@@ -26,16 +27,18 @@ export const useCoach = create<CoachUi>((set) => ({
   dismissFinished: () => set({ finished: null }),
 }));
 
-function deckSnap(d: Deck): DeckSnap {
-  const g = d.grid;
+function deckSnap(p: Player): DeckSnap {
+  const g = p.grid;
+  // turntables have no hot cues or loops, and are always "vinyl"
+  const d: Pick<Deck, 'hotCues' | 'loop' | 'vinyl'> = p.kind === 'cdj' ? (p as Deck) : { hotCues: [], loop: null, vinyl: true };
   return {
-    loaded: d.loaded,
-    playing: d.playing || d.scratching,
-    trackKey: d.track?.key ?? null,
-    bpm: d.bpm,
-    camelot: d.analysis?.camelot ?? null,
-    position: d.position,
-    beatInBar: g ? beatInBar(g, d.position) : -1,
+    loaded: p.loaded,
+    playing: p.playing || p.scratching,
+    trackKey: p.track?.key ?? null,
+    bpm: p.bpm,
+    camelot: p.analysis?.camelot ?? null,
+    position: p.position,
+    beatInBar: g ? beatInBar(g, p.position) : -1,
     hotCuesSet: d.hotCues.filter((c) => c !== null).length,
     hotCueBeat: d.hotCues.map((c) => {
       if (c === null || !g) return -1;
@@ -45,12 +48,13 @@ function deckSnap(d: Deck): DeckSnap {
     }),
     loopActive: !!d.loop?.active,
     vinyl: d.vinyl,
-    scratching: d.scratching,
+    scratching: p.scratching,
   };
 }
 
 export function snapshot(): Snap {
-  const { A, B } = engine.decks;
+  const A = engine.player('A');
+  const B = engine.player('B');
   const m = engine.mixer;
   const ga = A.grid;
   const gb = B.grid;
@@ -116,7 +120,7 @@ export function startCoach() {
         const open = xfOpen(engine.mixer.crossfader, engine.mixer.curve);
         if (open[0] !== lastOpen[0] || open[1] !== lastOpen[1]) {
           c.xfCuts++;
-          if (engine.decks.A.scratching || engine.decks.B.scratching) c.scratchCuts++;
+          if (engine.player('A').scratching || engine.player('B').scratching) c.scratchCuts++;
         }
         lastOpen = open;
         break;

@@ -1,6 +1,7 @@
 import type { Analysis, DeckId, Track } from '../types';
 import { beatAt, beatLength, beatTime, quantize, type Grid } from './grid';
 import { emitAction } from './actions';
+import type { Player } from './player';
 
 export type TempoRange = 6 | 10 | 16;
 export const HOT_CUES = 8;
@@ -17,7 +18,8 @@ export interface Loop {
  * The source node can't seek, so every jump starts a fresh node. Position is
  * tracked analytically from an anchor (context time, track position, rate).
  */
-export class Deck {
+export class Deck implements Player {
+  readonly kind = 'cdj' as const;
   readonly id: DeckId;
   readonly ctx: AudioContext;
   readonly output: GainNode;
@@ -435,7 +437,7 @@ export class Deck {
   }
 
   /** Match tempo (and beat phase if both are playing) to another deck. */
-  syncTo(other: Deck): boolean {
+  syncTo(other: Player): boolean {
     if (!this.analysis || !other.analysis) return false;
     let target = other.bpm / this.analysis.bpm - 1;
     // allow half/double-time matching if the straight match is out of range

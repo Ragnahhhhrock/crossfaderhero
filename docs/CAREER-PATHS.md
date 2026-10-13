@@ -6,7 +6,7 @@ Every career starts in the same bedroom. The first big choice is which kind of D
 |---|---|---|
 | Fantasy | Headline a major festival in a packed stadium | Be crowned the best DJ in the world |
 | You start as | A bedroom DJ | A bedroom turntablist |
-| Gear | Two CDJs + mixer (Phase 1 decks) | Two vinyl turntables + battle mixer (later build) |
+| Gear | Two CDJs + mixer (Phase 1 decks) | Two vinyl turntables + battle mixer, records from crates |
 | Progress by | Gigs: crowds, bookings, reputation | Contests: local → national → world |
 | Core skill | Reading the crowd, track selection, long blends | Scratching, beat juggling, tight routines |
 | Win state | Headline set at a major festival | Win the World Final |
@@ -64,4 +64,4 @@ Players can switch paths mid-career on the same save, as many real DJs do.
 ## Build notes
 
 - Pro DJ path builds on the Phase 1 CDJs directly: scoring engine → crowd simulation → venue ladder and bookings.
-- Battle DJ path needs new gear first: turntable model with platter/record physics for scratching, battle mixer crossfader, scratch/juggle detection for scoring.
+- Battle DJ path: the turntables, record crates and battle crossfader (sharp curve, reverse switch) are built ([TURNTABLES.md](TURNTABLES.md)); next is scratch/juggle detection for scoring.

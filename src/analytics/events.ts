@@ -7,12 +7,15 @@
  *
  * Events (custom unless noted):
  *   usb_folder_added      deck, folder_access (native|fallback), folder_count  (sent from state/library.ts)
+ *   crate_added           deck=crate, folder_access, folder_count        (sent from state/library.ts)
+ *   record_load           deck, genre, bpm, camelot — a record put on a turntable (sent from engine.ts)
+ *   gear_choice           gear (cdj|vinyl|both), first_time             (sent from state/setup.ts)
  *   usb_access_restored   deck
  *   library_scanned       deck, track_count, folder_count, size_bucket
  *   track_load            deck, genre, bpm, camelot, length_min        (sent from engine.ts)
  *   track_load_failed     deck, error_type                              (sent from engine.ts)
- *   track_play            deck, genre, bpm, camelot, other_deck_playing, tempo_pct, loads_played
- *   track_finish          deck, genre
+ *   track_play            deck, source (cdj|turntable), genre, bpm, camelot, other_deck_playing, tempo_pct, loads_played
+ *   track_finish          deck, source, genre
  *   feature_used          feature, deck — first use of each control per session
  *   mix_complete          method (manual|sync), rep                     (sent from coach.ts)
  *   mix_trainwreck        —                                             (sent from coach.ts)
@@ -63,7 +66,7 @@ export function startAnalytics() {
 
   onAction(({ type, deck: id }) => {
     if (type === 'play' && id) {
-      const deck = engine.decks[id];
+      const deck = engine.player(id);
       const t = deck.track;
       // one play per track load, not every pause/resume
       if (!t || playedKey[id] === t.key) return;
@@ -71,6 +74,7 @@ export function startAnalytics() {
       session.tracksPlayed++;
       track('track_play', {
         deck: id,
+        source: deck.kind,
         genre: genreOf(t.meta.genre),
         bpm: Math.round(deck.analysis?.bpm ?? 0),
         camelot: deck.analysis?.camelot ?? '',
@@ -82,7 +86,7 @@ export function startAnalytics() {
     }
     if (type === 'trackEnd' && id) {
       session.tracksFinished++;
-      track('track_finish', { deck: id, genre: genreOf(engine.decks[id].track?.meta.genre) });
+      track('track_finish', { deck: id, source: engine.player(id).kind, genre: genreOf(engine.player(id).track?.meta.genre) });
       return;
     }
     if (!featuresUsed.has(type)) {
@@ -93,7 +97,7 @@ export function startAnalytics() {
 
   // listening time, sampled once a second
   setInterval(() => {
-    if (DECKS.some((d) => engine.decks[d].playing)) session.playSeconds++;
+    if (DECKS.some((d) => engine.player(d).playing)) session.playSeconds++;
   }, 1000);
 
   // ---- USB / library (folder adds are sent from state/library.ts) ----
@@ -142,7 +146,8 @@ export function startAnalytics() {
   // ---- session summary, sent whenever the tab is hidden or closed ----
   let lastSent = '';
   const summary = () => {
-    const all = [...useLibrary.getState().slots.A.tracks, ...useLibrary.getState().slots.B.tracks];
+    const { A, B, crate } = useLibrary.getState().slots;
+    const all = [...A.tracks, ...B.tracks, ...crate.tracks];
     const params = {
       tracks_loaded: session.tracksLoaded,
       tracks_played: session.tracksPlayed,

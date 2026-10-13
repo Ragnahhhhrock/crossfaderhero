@@ -4,6 +4,7 @@ import { eqDb, peakDb, trimDb } from '../audio/mixer';
 import type { DeckId } from '../types';
 import { Fader, Knob } from './controls';
 import { useAnimationFrame, useMixer } from './hooks';
+import { useSetup } from '../state/setup';
 
 const SEGMENTS = 15;
 // dB thresholds per segment, bottom to top; the top two are the red clip zone
@@ -42,9 +43,17 @@ function Channel({ id }: { id: DeckId }) {
   const ch = m.channels[id];
   const tone = id === 'A' ? 'var(--deck-a)' : 'var(--deck-b)';
   const db = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)} dB`;
+  const gear = useSetup((st) => st.gear);
   return (
     <div className={`channel channel-${id.toLowerCase()}`} aria-label={`Channel ${id}`} role="group">
-      <span className="ch-label">{id}</span>
+      {gear === 'both' ? (
+        <div className="input-select" role="radiogroup" aria-label={`Channel ${id} input`}>
+          <button role="radio" aria-checked={s.input === 'cd'} className={`tiny ${s.input === 'cd' ? 'on' : ''}`} onClick={() => m.setInput(id, 'cd')} title={`CDJ ${id}`}>CD</button>
+          <button role="radio" aria-checked={s.input === 'phono'} className={`tiny ${s.input === 'phono' ? 'on' : ''}`} onClick={() => m.setInput(id, 'phono')} title={`Turntable ${id}`}>Phono</button>
+        </div>
+      ) : (
+        <span className="ch-label">{id}</span>
+      )}
       <div className="knobs-2">
         <Knob label="Trim" size={34} value={s.trim} onChange={(v) => m.set(id, { trim: v })} format={(v) => db(trimDb(v))} tone={tone} />
         <Knob label="Hi" size={34} value={s.hi} onChange={(v) => m.set(id, { hi: v })} format={(v) => db(eqDb(v))} tone={tone} />
@@ -116,6 +125,14 @@ export function MixerPanel() {
           title="Crossfader curve: smooth for blends, sharp for cuts and scratching"
         >
           {m.curve === 'smooth' ? 'Smooth' : 'Sharp'}
+        </button>
+        <button
+          className={`tiny ${m.reverse ? 'on' : ''}`}
+          aria-pressed={m.reverse}
+          onClick={() => m.setReverse(!m.reverse)}
+          title="Reverse (hamster): flips the crossfader so channel A is on the right — a battle DJ favourite"
+        >
+          Rev
         </button>
       </div>
     </section>

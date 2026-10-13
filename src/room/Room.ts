@@ -4,7 +4,17 @@ import { engine } from '../audio/engine';
 import { peakDb } from '../audio/mixer';
 import { hex } from '../design/tokens';
 import { buildCdj, buildMixer, buildSpeaker, type Action, type CdjModel, type MixerModel, type SpeakerModel } from './models';
+import { buildTurntable, TT, type TurntableModel } from './turntableModel';
 import { floorTexture, nightTexture, posterTexture, rugTexture } from './textures';
+import { artworkImage, drawSleeve } from '../library/sleeve';
+import type { Gear } from '../state/setup';
+import type { Track } from '../types';
+
+/** A crate of records on the floor: one per crate folder in the library. */
+export interface CrateContents {
+  name: string;
+  tracks: Track[];
+}
 
 export type Mode = 'room' | 'booth';
 
@@ -16,7 +26,9 @@ interface Pose {
 
 // Room is 6 m wide (x) by 5 m deep (z), desk against the north wall (−z).
 const ROOM = { w: 6, d: 5, h: 2.6 };
-const DESK = { w: 2.0, d: 0.7, h: 0.88, z: -2.5 + 0.35 };
+const DESK = { d: 0.7, h: 0.88, z: -2.5 + 0.35 };
+/** The desk gets wider when both pairs of decks are on it. */
+const deskWidth = (gear: Gear) => (gear === 'both' ? 2.7 : 2.0);
 const EYE = 1.65;
 const DJ_SPOT = new THREE.Vector3(0, 1.6, -1.32);
 const BOOTH_POSE: Pose = { pos: new THREE.Vector3(0, 1.74, -0.72), yaw: 0, pitch: -0.5 };
@@ -32,9 +44,15 @@ export class Room {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
-  private cdjs!: { A: CdjModel; B: CdjModel };
+  private cdjs: { A: CdjModel; B: CdjModel } | null = null;
+  private turntables: { A: TurntableModel; B: TurntableModel } | null = null;
   private mixer!: MixerModel;
   private speakers: SpeakerModel[] = [];
+  private gear: Gear;
+  private deskW: number;
+  private deskArea = new THREE.Group();
+  private crateArea = new THREE.Group();
+  private crates: CrateContents[] = [];
   private clickables: THREE.Object3D[] = [];
   private raycaster = new THREE.Raycaster();
   private ledLight!: THREE.PointLight;
@@ -52,7 +70,9 @@ export class Room {
   private width = 1;
   private height = 1;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, gear: Gear = 'cdj') {
+    this.gear = gear;
+    this.deskW = deskWidth(gear);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -148,84 +168,9 @@ export class Room {
     poster(1, 0.55, 1.78, -d / 2 + 0.005, 0, 0.95);
     poster(2, w / 2 - 0.005, 1.6, -0.4, -Math.PI / 2, 1.1);
 
-    // desk
-    const deskWood = new THREE.MeshStandardMaterial({ color: hex('room-desk'), roughness: 0.55, metalness: 0.05 });
-    const deskTop = new THREE.Mesh(new RoundedBoxGeometry(DESK.w, 0.04, DESK.d, 2, 0.008), deskWood);
-    deskTop.position.set(0, DESK.h - 0.02, DESK.z);
-    deskTop.castShadow = deskTop.receiveShadow = true;
-    s.add(deskTop);
-    const legMat = new THREE.MeshStandardMaterial({ color: hex('room-metal'), roughness: 0.4, metalness: 0.7 });
-    for (const lx of [-DESK.w / 2 + 0.05, DESK.w / 2 - 0.05])
-      for (const lz of [DESK.z - DESK.d / 2 + 0.05, DESK.z + DESK.d / 2 - 0.05]) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, DESK.h - 0.04, 0.04), legMat);
-        leg.position.set(lx, (DESK.h - 0.04) / 2, lz);
-        leg.castShadow = true;
-        s.add(leg);
-      }
-    const shelf = new THREE.Mesh(new THREE.BoxGeometry(DESK.w - 0.12, 0.025, DESK.d - 0.1), deskWood);
-    shelf.position.set(0, 0.25, DESK.z);
-    shelf.receiveShadow = true;
-    s.add(shelf);
-
-    // LED strip along the back of the desk, washing the wall
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(DESK.w - 0.1, 0.012, 0.012), new THREE.MeshBasicMaterial({ color: hex('room-led') }));
-    strip.position.set(0, DESK.h + 0.006, -ROOM.d / 2 + 0.02);
-    s.add(strip);
-    this.ledLight = new THREE.PointLight(hex('room-led'), 0.9, 3, 1.8);
-    this.ledLight.position.set(0, DESK.h + 0.25, -ROOM.d / 2 + 0.15);
-    s.add(this.ledLight);
-
-    // the gear
-    const gearY = DESK.h;
-    const gearZ = DESK.z + 0.06;
-    this.cdjs = { A: buildCdj('A', 'deck-a'), B: buildCdj('B', 'deck-b') };
-    this.cdjs.A.group.position.set(-0.305, gearY, gearZ);
-    this.cdjs.B.group.position.set(0.305, gearY, gearZ);
-    this.mixer = buildMixer();
-    this.mixer.group.position.set(0, gearY, gearZ);
-    s.add(this.cdjs.A.group, this.cdjs.B.group, this.mixer.group);
-
-    // monitors on foam pads, toed in towards the DJ
-    for (const side of [-1, 1] as const) {
-      const pad = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.27), new THREE.MeshStandardMaterial({ color: hex('gear-cabinet'), roughness: 1 }));
-      const x = side * 0.8;
-      const z = DESK.z - 0.08;
-      pad.position.set(x, gearY + 0.025, z);
-      s.add(pad);
-      const sp = buildSpeaker();
-      sp.group.position.set(x, gearY + 0.05, z);
-      sp.group.rotation.y = Math.atan2(DJ_SPOT.x - x, DJ_SPOT.z - z) * 0.85;
-      pad.rotation.y = sp.group.rotation.y;
-      s.add(sp.group);
-      this.speakers.push(sp);
-    }
-    this.scene.updateMatrixWorld(true);
-    this.speakers.forEach((sp, i) => {
-      const mouth = sp.mouth.clone();
-      sp.group.localToWorld(mouth);
-      const facing = new THREE.Vector3(0, 0, 1).applyQuaternion(sp.group.quaternion);
-      engine.mixer.placeSpeaker(i as 0 | 1, mouth, facing);
-    });
-
-    // a crate of records beside the desk
-    const crate = new THREE.Group();
-    crate.position.set(1.35, 0, -2.15);
-    crate.rotation.y = -0.3;
-    const crateMat = new THREE.MeshStandardMaterial({ color: hex('room-crate'), roughness: 0.8 });
-    for (const [bw, bh, bd, bx, by, bz] of [[0.36, 0.02, 0.36, 0, 0.01, 0], [0.36, 0.3, 0.02, 0, 0.15, -0.17], [0.36, 0.3, 0.02, 0, 0.15, 0.17], [0.02, 0.3, 0.36, -0.17, 0.15, 0], [0.02, 0.3, 0.36, 0.17, 0.15, 0]] as const) {
-      const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), crateMat);
-      b.position.set(bx, by, bz);
-      b.castShadow = true;
-      crate.add(b);
-    }
-    const sleeveColours = ['print-red', 'print-ink', 'print-paper', 'wave-low', 'print-sun', 'play', 'print-violet', 'print-magenta'].map(hex);
-    for (let i = 0; i < 14; i++) {
-      const sl = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.31, 0.006), new THREE.MeshStandardMaterial({ color: sleeveColours[i % sleeveColours.length], roughness: 0.7 }));
-      sl.position.set(0, 0.17, -0.14 + i * 0.02);
-      sl.rotation.x = -0.12 + (i % 3) * 0.04;
-      crate.add(sl);
-    }
-    s.add(crate);
+    s.add(this.deskArea, this.crateArea);
+    this.buildDesk();
+    this.buildCrates();
 
     // lights: warm ceiling pendant + soft sky fill
     s.add(new THREE.HemisphereLight(hex('room-fill-sky'), hex('room-fill-ground'), 0.55));
@@ -251,7 +196,178 @@ export class Room {
     task.target.position.set(0, DESK.h, DESK.z);
     s.add(task, task.target);
 
-    // things you can click
+  }
+
+  /** Swap the gear on the desk: CDJs, turntables or both. */
+  setGear(gear: Gear) {
+    if (gear === this.gear) return;
+    this.gear = gear;
+    this.deskW = deskWidth(gear);
+    this.buildDesk();
+    this.buildCrates();
+  }
+
+  /** Fill the crates on the floor with the library's records. */
+  setCrates(crates: CrateContents[]) {
+    this.crates = crates;
+    this.buildCrates();
+  }
+
+  private clear(g: THREE.Group) {
+    for (const c of [...g.children]) {
+      g.remove(c);
+      c.traverse((o) => {
+        const m = o as THREE.Mesh;
+        m.geometry?.dispose();
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------- desk + gear
+  private buildDesk() {
+    const s = this.deskArea;
+    this.clear(s);
+    const DW = this.deskW;
+    // desk
+    const deskWood = new THREE.MeshStandardMaterial({ color: hex('room-desk'), roughness: 0.55, metalness: 0.05 });
+    const deskTop = new THREE.Mesh(new RoundedBoxGeometry(DW, 0.04, DESK.d, 2, 0.008), deskWood);
+    deskTop.position.set(0, DESK.h - 0.02, DESK.z);
+    deskTop.castShadow = deskTop.receiveShadow = true;
+    s.add(deskTop);
+    const legMat = new THREE.MeshStandardMaterial({ color: hex('room-metal'), roughness: 0.4, metalness: 0.7 });
+    for (const lx of [-DW / 2 + 0.05, DW / 2 - 0.05])
+      for (const lz of [DESK.z - DESK.d / 2 + 0.05, DESK.z + DESK.d / 2 - 0.05]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, DESK.h - 0.04, 0.04), legMat);
+        leg.position.set(lx, (DESK.h - 0.04) / 2, lz);
+        leg.castShadow = true;
+        s.add(leg);
+      }
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(DW - 0.12, 0.025, DESK.d - 0.1), deskWood);
+    shelf.position.set(0, 0.25, DESK.z);
+    shelf.receiveShadow = true;
+    s.add(shelf);
+
+    // LED strip along the back of the desk, washing the wall
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(DW - 0.1, 0.012, 0.012), new THREE.MeshBasicMaterial({ color: hex('room-led') }));
+    strip.position.set(0, DESK.h + 0.006, -ROOM.d / 2 + 0.02);
+    s.add(strip);
+    this.ledLight = new THREE.PointLight(hex('room-led'), 0.9, 3, 1.8);
+    this.ledLight.position.set(0, DESK.h + 0.25, -ROOM.d / 2 + 0.15);
+    s.add(this.ledLight);
+
+    // the gear: CDJs either side of the mixer, turntables outside them (or instead of them)
+    const gearY = DESK.h;
+    const gearZ = DESK.z + 0.06;
+    this.mixer = buildMixer();
+    this.mixer.group.position.set(0, gearY, gearZ);
+    s.add(this.mixer.group);
+    this.cdjs = null;
+    this.turntables = null;
+    const cdjX = 0.305;
+    if (this.gear !== 'vinyl') {
+      this.cdjs = { A: buildCdj('A', 'deck-a'), B: buildCdj('B', 'deck-b') };
+      this.cdjs.A.group.position.set(-cdjX, gearY, gearZ);
+      this.cdjs.B.group.position.set(cdjX, gearY, gearZ);
+      s.add(this.cdjs.A.group, this.cdjs.B.group);
+    }
+    if (this.gear !== 'cdj') {
+      const inner = this.gear === 'both' ? cdjX + 0.16 : 0.135;
+      const ttX = inner + 0.02 + TT.w / 2;
+      this.turntables = { A: buildTurntable('A', 'deck-a'), B: buildTurntable('B', 'deck-b') };
+      this.turntables.A.group.position.set(-ttX, gearY, gearZ + 0.02);
+      this.turntables.B.group.position.set(ttX, gearY, gearZ + 0.02);
+      s.add(this.turntables.A.group, this.turntables.B.group);
+    }
+    this.speakers = [];
+
+    // monitors on foam pads, toed in towards the DJ
+    for (const side of [-1, 1] as const) {
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.27), new THREE.MeshStandardMaterial({ color: hex('gear-cabinet'), roughness: 1 }));
+      const x = side * (DW / 2 - 0.2);
+      const z = DESK.z - 0.08;
+      pad.position.set(x, gearY + 0.025, z);
+      s.add(pad);
+      const sp = buildSpeaker();
+      sp.group.position.set(x, gearY + 0.05, z);
+      sp.group.rotation.y = Math.atan2(DJ_SPOT.x - x, DJ_SPOT.z - z) * 0.85;
+      pad.rotation.y = sp.group.rotation.y;
+      s.add(sp.group);
+      this.speakers.push(sp);
+    }
+    this.scene.updateMatrixWorld(true);
+    this.speakers.forEach((sp, i) => {
+      const mouth = sp.mouth.clone();
+      sp.group.localToWorld(mouth);
+      const facing = new THREE.Vector3(0, 0, 1).applyQuaternion(sp.group.quaternion);
+      engine.mixer.placeSpeaker(i as 0 | 1, mouth, facing);
+    });
+
+    this.refreshClickables();
+  }
+
+  // ---------------------------------------------------------------- record crates
+  private buildCrates() {
+    const area = this.crateArea;
+    this.clear(area);
+    const vinyl = this.gear !== 'cdj';
+    const list: (CrateContents | null)[] = vinyl ? (this.crates.length ? this.crates.slice(0, 6) : [null]) : [null];
+    const crateMat = new THREE.MeshStandardMaterial({ color: hex('room-crate'), roughness: 0.8 });
+    const sleeveColours = ['print-red', 'print-ink', 'print-paper', 'wave-low', 'print-sun', 'play', 'print-violet', 'print-magenta'].map(hex);
+    list.forEach((contents, i) => {
+      const crate = new THREE.Group();
+      // along the wall to the right of the desk, then the left
+      const perSide = Math.max(1, Math.floor((ROOM.w / 2 - 0.25 - (this.deskW / 2 + 0.3)) / 0.42) + 1);
+      const side = i < perSide ? 1 : -1;
+      const slot = i < perSide ? i : i - perSide;
+      crate.position.set(side * (this.deskW / 2 + 0.33 + slot * 0.42), 0, -2.15);
+      crate.rotation.y = -0.3 * side + (slot % 2) * 0.12;
+      for (const [bw, bh, bd, bx, by, bz] of [[0.36, 0.02, 0.36, 0, 0.01, 0], [0.36, 0.3, 0.02, 0, 0.15, -0.17], [0.36, 0.3, 0.02, 0, 0.15, 0.17], [0.02, 0.3, 0.36, -0.17, 0.15, 0], [0.02, 0.3, 0.36, 0.17, 0.15, 0]] as const) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), crateMat);
+        b.position.set(bx, by, bz);
+        b.castShadow = true;
+        crate.add(b);
+      }
+      const tracks = contents?.tracks ?? [];
+      const count = contents ? Math.min(14, Math.max(1, tracks.length)) : vinyl ? 0 : 14;
+      for (let j = 0; j < count; j++) {
+        const t = tracks[tracks.length > 14 ? Math.floor((j * tracks.length) / 14) : j];
+        let mat: THREE.Material;
+        if (t) {
+          const c = document.createElement('canvas');
+          c.width = c.height = 128;
+          const g = c.getContext('2d')!;
+          drawSleeve(g, 128, t, null);
+          const tex = new THREE.CanvasTexture(c);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          void artworkImage(t).then((img) => {
+            if (!img) return;
+            drawSleeve(g, 128, t, img);
+            tex.needsUpdate = true;
+          });
+          mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 });
+        } else mat = new THREE.MeshStandardMaterial({ color: sleeveColours[j % sleeveColours.length], roughness: 0.7 });
+        const sl = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.31, 0.006), [mat, mat, mat, mat, mat, mat]);
+        // the front sleeve faces the room; the rest stand behind it
+        sl.position.set(0, 0.2, 0.12 - j * 0.02);
+        sl.rotation.x = -0.12 + (j % 3) * 0.04;
+        crate.add(sl);
+      }
+      if (vinyl) {
+        const label = contents ? `Record crate “${contents.name}” — ${tracks.length} records` : 'Record crate — fill it with your MP3s';
+        crate.traverse((o) => {
+          if ((o as THREE.Mesh).isMesh) {
+            o.userData.action = { kind: 'crate' } satisfies Action;
+            o.userData.label = label;
+          }
+        });
+      }
+      area.add(crate);
+    });
+    this.refreshClickables();
+  }
+
+  private refreshClickables() {
+    this.clickables = [];
     this.scene.traverse((o) => o.userData.action && this.clickables.push(o));
   }
 
@@ -306,7 +422,7 @@ export class Room {
   /** Distance from the player to the front of the desk. */
   distanceToDesk(): number {
     const p = this.pose.pos;
-    const dx = Math.max(0, Math.abs(p.x) - DESK.w / 2);
+    const dx = Math.max(0, Math.abs(p.x) - this.deskW / 2);
     const dz = Math.max(0, p.z - (DESK.z + DESK.d / 2));
     return Math.hypot(dx, dz);
   }
@@ -382,8 +498,10 @@ export class Room {
     }
 
     // the gear follows the engine
-    this.cdjs.A.update(engine.decks.A, now);
-    this.cdjs.B.update(engine.decks.B, now);
+    this.cdjs?.A.update(engine.decks.A, now);
+    this.cdjs?.B.update(engine.decks.B, now);
+    this.turntables?.A.update(engine.turntables.A, now);
+    this.turntables?.B.update(engine.turntables.B, now);
     const mx = engine.mixer;
     this.mixer.update(mx);
     const levels = [peakDb(mx.channels.A.meter), peakDb(mx.masterMeterL), peakDb(mx.masterMeterR), peakDb(mx.channels.B.meter)];
@@ -424,11 +542,13 @@ export class Room {
     next.z = THREE.MathUtils.clamp(next.z, -ROOM.d / 2 + m, ROOM.d / 2 - m);
     // desk + speakers + crate block a box in front of the north wall
     const deskFront = DESK.z + DESK.d / 2 + 0.28;
-    if (Math.abs(next.x) < DESK.w / 2 + 0.25 && next.z < deskFront) {
+    const half = this.deskW / 2;
+    if (Math.abs(next.x) < half + 0.25 && next.z < deskFront) {
       if (this.pose.pos.z >= deskFront) next.z = deskFront;
-      else next.x = Math.sign(next.x || 1) * (DESK.w / 2 + 0.25);
+      else next.x = Math.sign(next.x || 1) * (half + 0.25);
     }
-    if (next.x > 1.05 && next.x < 1.7 && next.z < -1.75) next.z = -1.75;
+    // crates along the wall beside the desk
+    if (Math.abs(next.x) > half && next.z < -1.75) next.z = -1.75;
     this.pose.pos.copy(next);
   }
 
@@ -441,8 +561,8 @@ export class Room {
     this.pose.yaw = Math.atan2(d.x, -d.z);
     this.pose.pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
     this.applyPose();
-    this.cdjs.A.showcase();
-    this.cdjs.B.showcase();
+    this.cdjs?.A.showcase();
+    this.cdjs?.B.showcase();
     this.mixer.update({ ...engine.mixer, state: { A: { ...engine.mixer.state.A, fader: 0.85, low: -0.4 }, B: { ...engine.mixer.state.B, fader: 0.7, hi: 0.3 } }, crossfader: 0.42 } as typeof engine.mixer);
     this.mixer.meterMats.forEach((col, c) => col.forEach((m, i) => (m.emissiveIntensity = i < [7, 8, 8, 6][c] ? 1.6 : 0.03)));
     this.ledLight.intensity = 2.4;

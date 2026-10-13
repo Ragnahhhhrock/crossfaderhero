@@ -12,7 +12,11 @@ export type Action =
   | { kind: 'cue'; deck: DeckId }
   | { kind: 'hot'; deck: DeckId; index: number }
   | { kind: 'loop'; deck: DeckId }
-  | { kind: 'sync'; deck: DeckId };
+  | { kind: 'sync'; deck: DeckId }
+  | { kind: 'ttStart'; deck: DeckId }
+  | { kind: 'rpm'; deck: DeckId; rpm: 33 | 45 }
+  | { kind: 'needle'; deck: DeckId }
+  | { kind: 'crate' };
 
 const SECONDS_PER_REV = 1.8;
 

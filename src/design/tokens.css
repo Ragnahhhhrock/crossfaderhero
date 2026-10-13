@@ -62,6 +62,17 @@
   --gear-baffle: #1b1c20;
   --gear-cone: #2a2a2a;
 
+  /* ---------- Vinyl and turntables ---------- */
+  --vinyl-black: #0c0c0e; /* the record */
+  --vinyl-groove: #18181c; /* dense, loud grooves */
+  --vinyl-quiet: #34363d; /* quiet passages and breaks catch the light */
+  --vinyl-sheen: #5a5e66; /* specular highlight across the grooves */
+  --slipmat: #141416;
+  --tt-plinth: #1e2024; /* battle-black deck */
+  --tt-chrome: #c9cdd3; /* tonearm, spindle, platter edge */
+  --tt-strobe: #ff4a2e; /* the strobe light under the platter edge */
+  --sleeve-white: #ebe5d8; /* white-label sleeves */
+
   /* ---------- 3D bedroom ---------- */
   --room-wall: #34495e;
   --room-wall-accent: #2a3446;

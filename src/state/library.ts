@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Analysis, DeckId, Track } from '../types';
+import type { Analysis, SlotId, Track } from '../types';
 import { readTags } from '../library/id3';
 import { track } from '../analytics/ga';
 import { decodeForAnalysis, analyzeBuffer, getCachedAnalysis, saveAnalysis } from '../library/analysisService';
@@ -23,15 +23,18 @@ export interface SlotState {
   tracks: Track[];
 }
 
+export const SLOTS: SlotId[] = ['A', 'B', 'crate'];
+
 interface LibraryState {
-  slots: Record<DeckId, SlotState>;
+  /** USB sticks A and B for the CDJs, and the record crates for the turntables. */
+  slots: Record<SlotId, SlotState>;
   analysing: string | null; // key of the track being analysed in the background
   queued: number;
   init: () => Promise<void>;
-  insertFolder: (slot: DeckId) => Promise<void>;
-  unlock: (slot: DeckId) => Promise<void>;
-  eject: (slot: DeckId) => void;
-  removeFolder: (slot: DeckId, index: number) => Promise<void>;
+  insertFolder: (slot: SlotId) => Promise<void>;
+  unlock: (slot: SlotId) => Promise<void>;
+  eject: (slot: SlotId) => void;
+  removeFolder: (slot: SlotId, index: number) => Promise<void>;
   setAnalysis: (key: string, analysis: Analysis) => void;
   findTrack: (key: string) => Track | undefined;
 }
@@ -45,13 +48,13 @@ function trackKey(path: string, file: File): string {
 }
 
 export const useLibrary = create<LibraryState>((setState, getState) => {
-  const patchSlot = (slot: DeckId, patch: Partial<SlotState>) =>
+  const patchSlot = (slot: SlotId, patch: Partial<SlotState>) =>
     setState((s) => ({ slots: { ...s.slots, [slot]: { ...s.slots[slot], ...patch } } }));
 
   const patchTrack = (key: string, patch: Partial<Track>) =>
     setState((s) => {
       const slots = { ...s.slots };
-      for (const id of ['A', 'B'] as DeckId[]) {
+      for (const id of SLOTS) {
         const i = slots[id].tracks.findIndex((t) => t.key === key);
         if (i >= 0) {
           const tracks = slots[id].tracks.slice();
@@ -62,15 +65,15 @@ export const useLibrary = create<LibraryState>((setState, getState) => {
       return { slots };
     });
 
-  let scanToken: Record<DeckId, number> = { A: 0, B: 0 };
+  const scanToken: Record<SlotId, number> = { A: 0, B: 0, crate: 0 };
 
-  async function scan(slot: DeckId) {
+  async function scan(slot: SlotId) {
     const token = ++scanToken[slot];
     const { folders } = getState().slots[slot];
     patchSlot(slot, { status: 'scanning', found: 0, tracks: [] });
     const tracks: Track[] = [];
     let flushAt = 0;
-    for (const folder of folders) {
+    for (const [folderIndex, folder] of folders.entries()) {
       for await (const f of scanFolder(folder)) {
         if (token !== scanToken[slot]) return;
         try {
@@ -87,6 +90,7 @@ export const useLibrary = create<LibraryState>((setState, getState) => {
           tracks.push({
             key,
             slot,
+            folder: folderIndex,
             path: f.path,
             name: f.name,
             size: file.size,
@@ -119,7 +123,7 @@ export const useLibrary = create<LibraryState>((setState, getState) => {
     pumping = true;
     try {
       for (;;) {
-        const all = [...getState().slots.A.tracks, ...getState().slots.B.tracks];
+        const all = SLOTS.flatMap((id) => getState().slots[id].tracks);
         const next = all.find((t) => t.analysisState === 'pending');
         setState({ queued: all.filter((t) => t.analysisState === 'pending').length });
         if (!next) break;
@@ -145,12 +149,12 @@ export const useLibrary = create<LibraryState>((setState, getState) => {
   }
 
   return {
-    slots: { A: emptySlot(), B: emptySlot() },
+    slots: { A: emptySlot(), B: emptySlot(), crate: emptySlot() },
     analysing: null,
     queued: 0,
 
     async init() {
-      for (const slot of ['A', 'B'] as DeckId[]) {
+      for (const slot of SLOTS) {
         const folders = await loadSlot(slot);
         if (!folders.length) continue;
         const granted = (await Promise.all(folders.map(hasPermission))).every(Boolean);
@@ -170,7 +174,7 @@ export const useLibrary = create<LibraryState>((setState, getState) => {
       }
       const folders = [...current, folder];
       patchSlot(slot, { folders });
-      track('usb_folder_added', { deck: slot, folder_access: supportsFolderAccess ? 'native' : 'fallback', folder_count: folders.length });
+      track(slot === 'crate' ? 'crate_added' : 'usb_folder_added', { deck: slot, folder_access: supportsFolderAccess ? 'native' : 'fallback', folder_count: folders.length });
       await saveSlot(slot, folders);
       await scan(slot);
     },
@@ -202,8 +206,11 @@ export const useLibrary = create<LibraryState>((setState, getState) => {
     },
 
     findTrack(key) {
-      const { A, B } = getState().slots;
-      return A.tracks.find((t) => t.key === key) ?? B.tracks.find((t) => t.key === key);
+      for (const id of SLOTS) {
+        const t = getState().slots[id].tracks.find((x) => x.key === key);
+        if (t) return t;
+      }
+      return undefined;
     },
   };
 });

@@ -1,5 +1,5 @@
 import { createStore, del, get, set } from 'idb-keyval';
-import type { DeckId } from '../types';
+import type { SlotId } from '../types';
 
 /**
  * A virtual USB stick = one or more folders the DJ granted read access to.
@@ -88,7 +88,7 @@ export async function* scanFolder(folder: UsbFolder): AsyncGenerator<FoundFile> 
 }
 
 /** Persist handle-based folders so the USB comes back next session. */
-export async function saveSlot(slot: DeckId, folders: UsbFolder[]): Promise<void> {
+export async function saveSlot(slot: SlotId, folders: UsbFolder[]): Promise<void> {
   const handles = folders.filter((f) => f.handle).map((f) => f.handle!);
   try {
     if (handles.length) await set(slot, handles, store);
@@ -98,7 +98,7 @@ export async function saveSlot(slot: DeckId, folders: UsbFolder[]): Promise<void
   }
 }
 
-export async function loadSlot(slot: DeckId): Promise<UsbFolder[]> {
+export async function loadSlot(slot: SlotId): Promise<UsbFolder[]> {
   try {
     const handles = ((await get(slot, store)) as FileSystemDirectoryHandle[] | undefined) ?? [];
     return handles.map((handle) => ({ name: handle.name, handle }));

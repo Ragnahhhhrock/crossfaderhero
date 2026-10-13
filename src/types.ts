@@ -1,4 +1,6 @@
 export type DeckId = 'A' | 'B';
+/** Where a track lives: a CDJ's USB stick, or the record crates. */
+export type SlotId = DeckId | 'crate';
 
 /** Result of analysing one track. Cached in IndexedDB by track key. */
 export interface Analysis {
@@ -29,7 +31,9 @@ export interface TrackMeta {
 export interface Track {
   /** Stable cache key: path + size + mtime. */
   key: string;
-  slot: DeckId;
+  slot: SlotId;
+  /** Index of the folder (USB folder, or crate) it was found in. */
+  folder: number;
   path: string; // relative path inside the USB, e.g. "House/track.mp3"
   name: string;
   size: number;

@@ -1,4 +1,6 @@
-# Turntables and the record crate (later build)
+# Turntables and the record crate
+
+**Status:** built — turntables, record crates, the gear choice (CDJs / turntables / both) and the CD/Phono input switch are in the game. Still to come: battle records, needle skips, scratch/juggle detection and scoring, and MIDI/DVS control.
 
 The Battle DJ path is vinyl only. Scratching, beat juggling and battle routines need a real platter and a record under your hand, so this path uses two direct-drive turntables (modelled on the Technics SL-1200) and a battle mixer instead of the CDJs.
 
@@ -43,7 +45,9 @@ Needed for the scoring engine and training mode (see [COMPETITIONS.md](COMPETITI
 
 ## Build notes
 
-- Replaces the Phase 1 "vinyl mode" jog-wheel scratch with a proper turntable model: platter, slipmat slip, tonearm/needle, motor torque.
-- Audio: reuse the Deck audio path but drive playback rate (including reverse) from the record's angular velocity every frame; a reverse-buffer or AudioWorklet is needed for smooth backwards playback.
-- Suggested order: crate + record pressing → turntable model and physics → needle drop and groove view → battle mixer → scratch training mode → detection for scoring.
+- Implemented as its own player (`src/audio/turntable.ts`) beside the CDJs; the CDJ "vinyl mode" jog scratch stays.
+- Physics (`src/audio/platter.ts`, unit-tested): motor torque and brake, power-off coast, slipmat friction (the record slips while held, is dragged back to speed when released, back-spins decay naturally), hand position control for scratches, platter-edge nudging. The needle position only moves while the needle is down.
+- Audio: an AudioWorklet (`turntable.worklet.ts`) runs the physics per sample and reads the record with 4-point interpolation, forwards or backwards, with speed-dependent level and tone, a needle-drop thump and light surface noise.
+- Gear choice: `src/state/setup.ts`. With both pairs on the desk, each mixer channel's input selector picks its CDJ or its turntable; the booth shows whichever is selected.
+- Next: battle mixer details (cut-in adjust), scratch training mode → detection for scoring.
 - The in-game decks should use a fictional brand name and design inspired by the SL-1200, not the real name or logo, to avoid trademark issues.

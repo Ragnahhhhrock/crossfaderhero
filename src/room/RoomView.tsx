@@ -4,6 +4,8 @@ import { toast } from '../state/toasts';
 import { track } from '../analytics/ga';
 import type { Action } from './models';
 import { Room, type Mode } from './Room';
+import type { Gear } from '../state/setup';
+import { useLibrary } from '../state/library';
 
 interface Props {
   mode: Mode;
@@ -12,13 +14,25 @@ interface Props {
   boothCentre: number;
   /** Escape is handled elsewhere while a dialog is open. */
   blockKeys: boolean;
+  gear: Gear;
+  /** Clicking a record crate opens the crate browser. */
+  onOpenCrate: () => void;
 }
 
 const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
 
-function perform(a: Action) {
-  const deck = engine.decks[a.deck];
+function perform(a: Action, openCrate: () => void) {
   engine.resume();
+  if (a.kind === 'crate') return openCrate();
+  if (a.kind === 'ttStart' || a.kind === 'rpm' || a.kind === 'needle') {
+    const tt = engine.turntables[a.deck];
+    if (a.kind === 'ttStart') tt.toggleStart();
+    else if (a.kind === 'rpm') tt.setRpm(a.rpm);
+    else if (!tt.loaded) toast(`Turntable ${a.deck} has no record on it. Click a record crate to pull one out.`);
+    else tt.toggleNeedle();
+    return;
+  }
+  const deck = engine.decks[a.deck];
   if (!deck.loaded && a.kind !== 'sync') {
     toast(`Deck ${a.deck} is empty. Step up to the decks (E) and load a track from your USB.`);
     return;
@@ -37,7 +51,11 @@ function perform(a: Action) {
   }
 }
 
-export function RoomView({ mode, onModeChange, boothCentre, blockKeys }: Props) {
+export function RoomView({ mode, onModeChange, boothCentre, blockKeys, gear, onOpenCrate }: Props) {
+  const openCrate = useRef(onOpenCrate);
+  openCrate.current = onOpenCrate;
+  const gearRef = useRef(gear);
+  gearRef.current = gear;
   const canvas = useRef<HTMLCanvasElement>(null);
   const roomRef = useRef<Room | null>(null);
   const [near, setNear] = useState(false);
@@ -54,7 +72,7 @@ export function RoomView({ mode, onModeChange, boothCentre, blockKeys }: Props) 
     let room: Room;
     try {
       if (new URLSearchParams(location.search).has('no3d')) throw new Error('3D disabled');
-      room = new Room(c);
+      room = new Room(c, gearRef.current);
     } catch (e) {
       track('room_3d_unavailable', { reason: (e as Error)?.message === '3D disabled' ? 'no3d_param' : 'webgl_unavailable' });
       setFailed(true);
@@ -105,6 +123,29 @@ export function RoomView({ mode, onModeChange, boothCentre, blockKeys }: Props) 
   }, [mode]);
 
   useEffect(() => roomRef.current?.setBoothCentre(boothCentre), [boothCentre]);
+  useEffect(() => roomRef.current?.setGear(gear), [gear]);
+
+  // the crates on the floor follow the record crates in the library
+  useEffect(() => {
+    let timer = 0;
+    let last: unknown = null;
+    const sync = () => {
+      const slot = useLibrary.getState().slots.crate;
+      if (slot.tracks === last) return;
+      last = slot.tracks;
+      clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const crates = slot.folders.map((f, i) => ({ name: f.name, tracks: slot.tracks.filter((t) => t.folder === i) }));
+        roomRef.current?.setCrates(crates);
+      }, slot.status === 'scanning' ? 1500 : 300);
+    };
+    sync();
+    const unsub = useLibrary.subscribe(sync);
+    return () => {
+      unsub();
+      clearTimeout(timer);
+    };
+  }, []);
 
   // walking keys
   useEffect(() => {
@@ -147,7 +188,7 @@ export function RoomView({ mode, onModeChange, boothCentre, blockKeys }: Props) 
       <canvas
         ref={canvas}
         className="room-canvas"
-        aria-label="Your bedroom: a desk with two decks, a mixer and two speakers"
+        aria-label={`Your bedroom: a desk with ${gear === 'both' ? 'two CDJs, two turntables' : gear === 'vinyl' ? 'two turntables' : 'two decks'}, a mixer and two speakers`}
         onPointerDown={(e) => {
           const room = roomRef.current;
           if (!room) return;
@@ -158,7 +199,7 @@ export function RoomView({ mode, onModeChange, boothCentre, blockKeys }: Props) 
           if (hit?.action.kind === 'cue') {
             cue = hit.action;
             if (engine.decks[cue.deck].loaded) engine.decks[cue.deck].cueDown();
-            else perform(cue);
+            else perform(cue, openCrate.current);
           }
           drag.current = { x: e.clientX, y: e.clientY, moved: false, cue };
         }}
@@ -185,12 +226,12 @@ export function RoomView({ mode, onModeChange, boothCentre, blockKeys }: Props) 
           drag.current = null;
           if (!room || !d) return;
           if (d.cue) {
-            engine.decks[d.cue.deck].cueUp();
+            if (d.cue.kind === 'cue') engine.decks[d.cue.deck].cueUp();
             return;
           }
           if (d.moved) return;
           const hit = room.pick(e.clientX, e.clientY, canvas.current!.getBoundingClientRect());
-          if (hit) perform(hit.action);
+          if (hit) perform(hit.action, openCrate.current);
           else if (modeRef.current === 'room' && room.canStepUp()) {
             // clicking the desk area from close by also steps up
             const r = canvas.current!.getBoundingClientRect();
