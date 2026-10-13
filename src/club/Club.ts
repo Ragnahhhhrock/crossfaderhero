@@ -28,6 +28,8 @@ export type ClubMode = 'room' | 'booth';
 
 /** Where you stand when you jump on the decks: behind them, looking over the gear at the crowd. */
 const BOOTH_POSE = { pos: new THREE.Vector3(0, 2.86, BOOTH_Z - 0.95), target: new THREE.Vector3(0, 1.6, BOOTH_Z + 4.1) };
+/** With the decks hidden: same spot, eyes up and out over the crowd. */
+const ROOM_LOOK_TARGET = new THREE.Vector3(0, 2.1, 5);
 
 /** What the club's clock is following right now. */
 export interface ClubClock {
@@ -167,6 +169,9 @@ export class Club {
   private orbitReturn: { pos: THREE.Vector3; target: THREE.Vector3 } | null = null;
   private viewCentre = 0.5;
   private boothCentre = 0.3;
+  /** Decks hidden: look up at the room from behind the booth, drag to look around. */
+  private lookAround = false;
+  private look = { yaw: 0, pitch: 0, yawTo: 0, pitchTo: 0 };
   private centreMove: { from: number; to: number } | null = null;
   private width = 1;
   private height = 1;
@@ -201,6 +206,7 @@ export class Club {
     this.controls.maxPolarAngle = Math.PI * 0.62;
     this.controls.autoRotateSpeed = 0.6;
     this.controls.addEventListener('start', () => (this.camMove = null));
+    this.bindLookDrag(r.domElement);
 
     this.scene.background = new THREE.Color(hex('graphite-1000'));
     this.scene.fog = this.fog;
@@ -489,8 +495,38 @@ export class Club {
     this.orbitReturn = { pos: this.camera.position.clone(), target: this.controls.target.clone() };
     this.controls.enabled = false;
     this.controls.autoRotate = false;
-    this.moveCamera(BOOTH_POSE.pos, BOOTH_POSE.target);
-    this.centreMove = { from: this.viewCentre, to: this.boothCentre };
+    this.moveCamera(BOOTH_POSE.pos, this.lookAround ? ROOM_LOOK_TARGET : BOOTH_POSE.target);
+    this.centreMove = { from: this.viewCentre, to: this.lookAround ? 0.5 : this.boothCentre };
+  }
+
+  /** Hide or show the decks while you're on them: look up at the room, or back down at the gear. */
+  setLookAround(on: boolean): void {
+    if (on === this.lookAround) return;
+    this.lookAround = on;
+    this.look = { yaw: 0, pitch: 0, yawTo: 0, pitchTo: 0 };
+    if (this.mode !== 'booth') return;
+    this.moveCamera(BOOTH_POSE.pos, on ? ROOM_LOOK_TARGET : BOOTH_POSE.target);
+    this.centreMove = { from: this.viewCentre, to: on ? 0.5 : this.boothCentre };
+  }
+
+  /** Drag to turn your head while the decks are hidden. */
+  private bindLookDrag(el: HTMLElement): void {
+    let last: { x: number; y: number } | null = null;
+    el.addEventListener('pointerdown', (e) => {
+      if (this.mode !== 'booth' || !this.lookAround) return;
+      last = { x: e.clientX, y: e.clientY };
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!last) return;
+      const L = this.look;
+      L.yawTo = THREE.MathUtils.clamp(L.yawTo - (e.clientX - last.x) * 0.004, -1.4, 1.4);
+      L.pitchTo = THREE.MathUtils.clamp(L.pitchTo + (e.clientY - last.y) * 0.003, -0.5, 0.6);
+      last = { x: e.clientX, y: e.clientY };
+    });
+    const end = () => (last = null);
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
   }
 
   /** Back onto the floor, where you were. */
@@ -507,7 +543,7 @@ export class Club {
   /** Where the booth controls leave room to see the gear (fraction of the screen height). */
   setBoothCentre(fraction: number): void {
     this.boothCentre = fraction;
-    if (this.mode === 'booth' && !this.camMove) {
+    if (this.mode === 'booth' && !this.camMove && !this.lookAround) {
       this.viewCentre = fraction;
       this.applyViewCentre();
     }
@@ -1120,6 +1156,16 @@ export class Club {
         this.camMove = null;
         this.centreMove = null;
       }
+    }
+    if (this.mode === 'booth' && this.lookAround && !this.camMove) {
+      const L = this.look;
+      L.yaw += (L.yawTo - L.yaw) * 0.15;
+      L.pitch += (L.pitchTo - L.pitch) * 0.15;
+      const dir = ROOM_LOOK_TARGET.clone().sub(this.camera.position);
+      const sph = new THREE.Spherical().setFromVector3(dir);
+      sph.theta += L.yaw;
+      sph.phi = THREE.MathUtils.clamp(sph.phi - L.pitch, 0.25, Math.PI - 0.25);
+      this.controls.target.copy(this.camera.position).add(new THREE.Vector3().setFromSpherical(sph));
     }
     if (this.mode === 'booth') this.camera.lookAt(this.controls.target);
     else this.controls.update();

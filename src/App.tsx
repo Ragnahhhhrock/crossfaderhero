@@ -172,6 +172,7 @@ function Help({ onClose }: { onClose: () => void }) {
             {row('4-beat loop on / off', 'E', 'I')}
           </tbody>
         </table>
+        <p>In the club, <kbd>H</kbd> hides the decks for a clear look at the room (drag to look around); <kbd>H</kbd> or <kbd>Esc</kbd> brings them back.</p>
         <p>Crossfader: <kbd>←</kbd> <kbd>→</kbd>, <kbd>↓</kbd> to centre. Knobs and faders: drag, scroll or arrow keys; double-click resets; hold Shift for fine control.</p>
         <h3>Turntables</h3>
         <p>
@@ -234,6 +235,8 @@ export type Venue = 'bedroom' | 'club';
 export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
   const club = venue === 'club';
   const [deskOpen, setDeskOpen] = useState(false);
+  // in the club: hide the decks for a clear look at the room
+  const [decksHidden, setDecksHidden] = useState(false);
   const [help, setHelp] = useState(false);
   const [lessonsOpen, setLessonsOpen] = useState(false);
   const onboarded = useCareer((s) => s.onboarded);
@@ -297,6 +300,7 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
     if (mode === 'room') {
       setUsbOpen(false);
       setCrateOpen(false);
+      setDecksHidden(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
@@ -315,6 +319,40 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
     return () => ro.disconnect();
   }, []);
 
+  // H hides / shows the decks in the club
+  useEffect(() => {
+    if (!club || mode !== 'booth' || modal) return;
+    const key = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (e.key.toLowerCase() !== 'h' || e.repeat || e.metaKey || e.ctrlKey || e.altKey || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return;
+      e.preventDefault();
+      setDecksHidden((h) => !h);
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [club, mode, modal]);
+  // hiding the decks closes the drawers
+  useEffect(() => {
+    if (decksHidden) {
+      setUsbOpen(false);
+      setCrateOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decksHidden]);
+
+  // Escape brings the decks back, then closes a drawer, before it steps back from the decks
+  useEffect(() => {
+    if (!decksHidden) return;
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !modal) {
+        e.stopImmediatePropagation();
+        setDecksHidden(false);
+      }
+    };
+    window.addEventListener('keydown', esc, true);
+    return () => window.removeEventListener('keydown', esc, true);
+  }, [decksHidden, modal]);
+
   // Escape closes a drawer before it steps back from the decks
   useEffect(() => {
     const esc = (e: KeyboardEvent) => {
@@ -330,7 +368,7 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
   }, [drawerOpen, modal]);
 
   return (
-    <div className={`app mode-${mode} venue-${venue}`}>
+    <div className={`app mode-${mode} venue-${venue} ${club && decksHidden ? 'decks-hidden' : ''}`}>
       {club ? (
         <ClubView
           mode={mode}
@@ -339,6 +377,7 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
           blockKeys={modal || drawerOpen}
           gear={gear ?? 'cdj'}
           deskOpen={deskOpen}
+          decksHidden={decksHidden}
         />
       ) : (
         <RoomView
@@ -374,7 +413,12 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
               Turn on sound
             </button>
           )}
-          {mode === 'booth' && (
+          {club && mode === 'booth' && (
+            <button className={`tiny ${decksHidden ? 'on' : ''}`} onClick={() => setDecksHidden((h) => !h)} aria-pressed={decksHidden} title="H — a clear look at the room; drag to look around">
+              {decksHidden ? 'Show decks' : 'Hide decks'}
+            </button>
+          )}
+          {mode === 'booth' && !decksHidden && (
             <>
               <div className="zoom" role="group" aria-label="Waveform zoom">
                 <button className="tiny" onClick={() => setZoom((z) => Math.max(0.5, z / 1.5))} aria-label="Zoom out">−</button>
@@ -392,7 +436,7 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
               )}
             </>
           )}
-          {club && mode === 'booth' && (
+          {club && mode === 'booth' && !decksHidden && (
             <button className={`tiny ${deskOpen ? 'on' : ''}`} onClick={() => setDeskOpen((o) => !o)} aria-expanded={deskOpen} title="Lights, lasers, smoke and the LED wall">
               Light desk
             </button>
@@ -415,7 +459,7 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
         </div>
       </header>
 
-      <div className="booth-overlay" aria-hidden={mode !== 'booth'}>
+      <div className="booth-overlay" aria-hidden={mode !== 'booth' || (club && decksHidden)}>
         <div className="booth-gap" ref={gap} />
         <div className="waves">
           <div className="wave-row wave-a">

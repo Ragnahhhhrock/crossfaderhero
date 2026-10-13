@@ -18,10 +18,12 @@ interface Props {
   gear: Gear;
   /** The light desk, while you're on the decks. */
   deskOpen: boolean;
+  /** Decks hidden: a clear look at the room from behind the booth. */
+  decksHidden: boolean;
 }
 
 /** The club venue: the 3D room, its light desk, and the way onto the decks. */
-export function ClubView({ mode, onModeChange, boothCentre, blockKeys, gear, deskOpen }: Props) {
+export function ClubView({ mode, onModeChange, boothCentre, blockKeys, gear, deskOpen, decksHidden }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const clubRef = useRef<Club | null>(null);
   const desk = useRef<{ panel: HTMLElement; setOpen: (o: boolean) => void } | null>(null);
@@ -71,6 +73,9 @@ export function ClubView({ mode, onModeChange, boothCentre, blockKeys, gear, des
   useEffect(() => {
     desk.current?.setOpen(deskOpen);
   }, [deskOpen]);
+  useEffect(() => {
+    clubRef.current?.setLookAround(decksHidden);
+  }, [decksHidden]);
 
   // E jumps on the decks from anywhere in the club, Esc steps back down
   useEffect(() => {
@@ -89,7 +94,7 @@ export function ClubView({ mode, onModeChange, boothCentre, blockKeys, gear, des
   }, [onModeChange]);
 
   return (
-    <div className={`club-view mode-${mode}`}>
+    <div className={`club-view mode-${mode} ${decksHidden ? 'decks-hidden' : ''}`}>
       <div className="club-stage" ref={host} onPointerDown={() => engine.resume()} aria-label="The club: a stage with a DJ booth, a dance floor and a lighting rig" />
       {mode === 'room' && !failed && (
         <button

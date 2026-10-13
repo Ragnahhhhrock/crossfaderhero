@@ -61,6 +61,11 @@ kbd { font: 12px var(--font-lcd); background: var(--surface-sunken); border: 1px
 .mode-booth .booth-overlay { opacity: 1; visibility: visible; transform: none; transition: opacity 0.45s ease 0.35s, transform 0.5s var(--ease-out) 0.3s; }
 .booth-overlay > *:not(.booth-gap) { pointer-events: auto; }
 .booth-gap { flex: 1; min-height: 120px; }
+/* club: decks hidden for a clear look at the room */
+.decks-hidden .booth-overlay { opacity: 0; visibility: hidden; transform: translateY(24px); transition: opacity 0.3s ease, transform 0.4s ease, visibility 0s 0.4s; }
+.decks-hidden .club-panel { display: none; }
+.decks-hidden .club-stage canvas { cursor: grab; }
+.decks-hidden .club-stage canvas:active { cursor: grabbing; }
 .mode-booth .waves { background: var(--glass-strong); }
 .mode-booth .booth { background: var(--glass-strong); }
 .usb-drawer {
