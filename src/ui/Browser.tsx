@@ -4,6 +4,7 @@ import { supportsFolderAccess, useLibrary } from '../state/library';
 import { toast } from '../state/toasts';
 import type { DeckId, Track } from '../types';
 import { formatTime, useDeck } from './hooks';
+import { ScanProgress } from './ScanProgress';
 
 type SortKey = 'title' | 'artist' | 'bpm' | 'key' | 'genre' | 'time';
 const ROW = 34;
@@ -146,7 +147,7 @@ export function Browser() {
           onKeyDown={(e) => e.stopPropagation()}
         />
         <span className="status">
-          {s.status === 'scanning' ? `Scanning… ${s.found} tracks` : analysing ? `Analysing ${queued} track${queued === 1 ? '' : 's'}…` : ''}
+          {s.status === 'scanning' ? <ScanProgress slot={s} noun="tracks" /> : analysing ? `Analysing ${queued} track${queued === 1 ? '' : 's'}…` : ''}
         </span>
       </div>
 

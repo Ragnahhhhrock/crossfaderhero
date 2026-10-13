@@ -494,3 +494,15 @@ kbd { font: 12px var(--font-lcd); background: var(--surface-sunken); border: 1px
 
 /* marketing render mode (?shot): just the room */
 .shot .topbar, .shot .room-hints, .shot .step-prompt, .shot .hover-label, .shot .toasts, .shot .coach, .shot .modal-backdrop { display: none !important; }
+
+/* ---------- folder scan progress ---------- */
+.scan-progress { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; min-width: 150px; }
+.scan-label { white-space: nowrap; }
+.scan-track { position: relative; display: block; width: 150px; height: 4px; background: var(--surface-well); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+.scan-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--cue); transition: width 120ms linear; }
+.scan-track.indeterminate .scan-fill { width: 35%; animation: scan-sweep 1.1s ease-in-out infinite; }
+@keyframes scan-sweep { from { left: -35%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .scan-fill { transition: none; }
+  .scan-track.indeterminate .scan-fill { animation: none; width: 100%; opacity: 0.4; }
+}

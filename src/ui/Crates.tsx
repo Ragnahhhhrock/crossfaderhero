@@ -6,6 +6,7 @@ import { sleeveUrl } from '../library/sleeve';
 import type { DeckId, Track } from '../types';
 import { formatTime, useMixer, useTurntable } from './hooks';
 import { useSetup } from '../state/setup';
+import { ScanProgress } from './ScanProgress';
 
 type SortKey = 'title' | 'artist' | 'bpm' | 'key' | 'genre';
 
@@ -236,7 +237,7 @@ export function Crates() {
           onKeyDown={(e) => e.stopPropagation()}
         />
         <span className="status">
-          {slot.status === 'scanning' ? `Filling crate… ${slot.found} records` : pressingCount && analysing ? `Pressing ${pressingCount} record${pressingCount === 1 ? '' : 's'}…` : ''}
+          {slot.status === 'scanning' ? <ScanProgress slot={slot} noun="records" /> : pressingCount && analysing ? `Pressing ${pressingCount} record${pressingCount === 1 ? '' : 's'}…` : ''}
         </span>
       </div>
 

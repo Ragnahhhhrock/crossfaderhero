@@ -11,6 +11,7 @@ import {
   saveSlot,
   scanFolder,
   supportsFolderAccess,
+  type FoundFile,
   type UsbFolder,
 } from '../library/usb';
 
@@ -20,6 +21,9 @@ export interface SlotState {
   folders: UsbFolder[];
   status: SlotStatus;
   found: number;
+  /** Scan progress: MP3s read so far out of `total` (null while still walking the folders). */
+  scanned: number;
+  total: number | null;
   tracks: Track[];
 }
 
@@ -39,7 +43,7 @@ interface LibraryState {
   findTrack: (key: string) => Track | undefined;
 }
 
-const emptySlot = (): SlotState => ({ folders: [], status: 'empty', found: 0, tracks: [] });
+const emptySlot = (): SlotState => ({ folders: [], status: 'empty', found: 0, scanned: 0, total: null, tracks: [] });
 
 const artworkUrls = new Map<string, string>();
 
@@ -70,49 +74,73 @@ export const useLibrary = create<LibraryState>((setState, getState) => {
   async function scan(slot: SlotId) {
     const token = ++scanToken[slot];
     const { folders } = getState().slots[slot];
-    patchSlot(slot, { status: 'scanning', found: 0, tracks: [] });
-    const tracks: Track[] = [];
-    let flushAt = 0;
+    patchSlot(slot, { status: 'scanning', found: 0, scanned: 0, total: null, tracks: [] });
+
+    // pass 1: walk the folders (cheap) so we know how many files there are
+    const files: { folderIndex: number; f: FoundFile }[] = [];
+    let lastPatch = 0;
     for (const [folderIndex, folder] of folders.entries()) {
       for await (const f of scanFolder(folder)) {
         if (token !== scanToken[slot]) return;
-        try {
-          const file = await f.getFile();
-          const key = trackKey(f.path, file);
-          const meta = await readTags(file);
-          let artworkUrl = artworkUrls.get(key);
-          if (!artworkUrl && meta.artwork) {
-            artworkUrl = URL.createObjectURL(new Blob([meta.artwork.data as Uint8Array<ArrayBuffer>], { type: meta.artwork.mime }));
-            artworkUrls.set(key, artworkUrl);
-          }
-          delete meta.artwork;
-          const analysis = await getCachedAnalysis(key);
-          tracks.push({
-            key,
-            slot,
-            folder: folderIndex,
-            path: f.path,
-            name: f.name,
-            size: file.size,
-            lastModified: file.lastModified,
-            meta,
-            artworkUrl,
-            analysis,
-            analysisState: analysis ? 'done' : 'pending',
-            getFile: f.getFile,
-          });
-        } catch {
-          /* unreadable file — skip */
+        files.push({ folderIndex, f });
+        const now = performance.now();
+        if (now - lastPatch > 100) {
+          lastPatch = now;
+          patchSlot(slot, { scanned: files.length });
         }
-        if (tracks.length - flushAt >= 25) {
-          flushAt = tracks.length;
-          patchSlot(slot, { found: tracks.length, tracks: tracks.slice() });
+      }
+    }
+    if (token !== scanToken[slot]) return;
+    patchSlot(slot, { scanned: 0, total: files.length });
+
+    // pass 2: read tags, artwork and cached analysis for each file
+    const tracks: Track[] = [];
+    let flushAt = 0;
+    lastPatch = 0;
+    for (const [i, { folderIndex, f }] of files.entries()) {
+      if (token !== scanToken[slot]) return;
+      try {
+        const file = await f.getFile();
+        const key = trackKey(f.path, file);
+        const meta = await readTags(file);
+        let artworkUrl = artworkUrls.get(key);
+        if (!artworkUrl && meta.artwork) {
+          artworkUrl = URL.createObjectURL(new Blob([meta.artwork.data as Uint8Array<ArrayBuffer>], { type: meta.artwork.mime }));
+          artworkUrls.set(key, artworkUrl);
+        }
+        delete meta.artwork;
+        const analysis = await getCachedAnalysis(key);
+        tracks.push({
+          key,
+          slot,
+          folder: folderIndex,
+          path: f.path,
+          name: f.name,
+          size: file.size,
+          lastModified: file.lastModified,
+          meta,
+          artworkUrl,
+          analysis,
+          analysisState: analysis ? 'done' : 'pending',
+          getFile: f.getFile,
+        });
+      } catch {
+        /* unreadable file — skip */
+      }
+      if (tracks.length - flushAt >= 25) {
+        flushAt = tracks.length;
+        patchSlot(slot, { found: tracks.length, scanned: i + 1, tracks: tracks.slice() });
+      } else {
+        const now = performance.now();
+        if (now - lastPatch > 100) {
+          lastPatch = now;
+          patchSlot(slot, { scanned: i + 1 });
         }
       }
     }
     if (token !== scanToken[slot]) return;
     tracks.sort((a, b) => a.path.localeCompare(b.path));
-    patchSlot(slot, { status: 'ready', found: tracks.length, tracks });
+    patchSlot(slot, { status: 'ready', found: tracks.length, scanned: files.length, total: files.length, tracks });
     pumpQueue();
   }
 
