@@ -12,6 +12,7 @@ import { PhaseMeter, ScrollingWaveform } from './ui/waveforms';
 import { setUiPaused, usePlayer, usePolled } from './ui/hooks';
 import { RoomView } from './room/RoomView';
 import { ClubView } from './club/ClubView';
+import type { BoothView } from './club/Club';
 import type { Mode } from './room/Room';
 import { startCoach } from './career/coach';
 import { useCareer } from './career/store';
@@ -172,7 +173,7 @@ function Help({ onClose }: { onClose: () => void }) {
             {row('4-beat loop on / off', 'E', 'I')}
           </tbody>
         </table>
-        <p>In the club, <kbd>H</kbd> hides the decks for a clear look at the room (drag to look around); <kbd>H</kbd> or <kbd>Esc</kbd> brings them back.</p>
+        <p>In the club, drag the view to look around while you mix: <kbd>V</kbd> switches between the DJ's eyes and a camera behind the DJ (scroll to zoom), <kbd>R</kbd> or a double-click resets it. <kbd>H</kbd> hides the decks for a full-screen look at the room; <kbd>H</kbd> or <kbd>Esc</kbd> brings them back.</p>
         <p>Crossfader: <kbd>←</kbd> <kbd>→</kbd>, <kbd>↓</kbd> to centre. Knobs and faders: drag, scroll or arrow keys; double-click resets; hold Shift for fine control.</p>
         <h3>Turntables</h3>
         <p>
@@ -237,6 +238,21 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
   const [deskOpen, setDeskOpen] = useState(false);
   // in the club: hide the decks for a clear look at the room
   const [decksHidden, setDecksHidden] = useState(false);
+  const [boothView, setBoothViewRaw] = useState<BoothView>(() => {
+    try {
+      return localStorage.getItem('cfh-club-view') === 'behind' ? 'behind' : 'eyes';
+    } catch {
+      return 'eyes';
+    }
+  });
+  const setBoothView = (v: BoothView) => {
+    setBoothViewRaw(v);
+    try {
+      localStorage.setItem('cfh-club-view', v);
+    } catch {
+      /* storage blocked: the view just won't be remembered */
+    }
+  };
   const [help, setHelp] = useState(false);
   const [lessonsOpen, setLessonsOpen] = useState(false);
   const onboarded = useCareer((s) => s.onboarded);
@@ -378,6 +394,8 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
           gear={gear ?? 'cdj'}
           deskOpen={deskOpen}
           decksHidden={decksHidden}
+          boothView={boothView}
+          onBoothViewChange={setBoothView}
         />
       ) : (
         <RoomView
@@ -435,6 +453,16 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
                 </button>
               )}
             </>
+          )}
+          {club && mode === 'booth' && (
+            <div className="zoom" role="group" aria-label="Camera">
+              <button className={`tiny ${boothView === 'eyes' ? 'on' : ''}`} onClick={() => setBoothView('eyes')} aria-pressed={boothView === 'eyes'} title="Through the DJ's eyes (V)">
+                Eyes
+              </button>
+              <button className={`tiny ${boothView === 'behind' ? 'on' : ''}`} onClick={() => setBoothView('behind')} aria-pressed={boothView === 'behind'} title="Camera behind the DJ (V)">
+                Behind
+              </button>
+            </div>
           )}
           {club && mode === 'booth' && !decksHidden && (
             <button className={`tiny ${deskOpen ? 'on' : ''}`} onClick={() => setDeskOpen((o) => !o)} aria-expanded={deskOpen} title="Lights, lasers, smoke and the LED wall">

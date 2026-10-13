@@ -25,11 +25,20 @@ const TRUSS_Y = 5.35;
 const BOOTH_Z = -6.3;
 
 export type ClubMode = 'room' | 'booth';
+/** How you see the club from the decks: through the DJ's eyes, or from behind them. */
+export type BoothView = 'eyes' | 'behind';
 
 /** Where you stand when you jump on the decks: behind them, looking over the gear at the crowd. */
 const BOOTH_POSE = { pos: new THREE.Vector3(0, 2.86, BOOTH_Z - 0.95), target: new THREE.Vector3(0, 1.6, BOOTH_Z + 4.1) };
 /** With the decks hidden: same spot, eyes up and out over the crowd. */
 const ROOM_LOOK_TARGET = new THREE.Vector3(0, 2.1, 5);
+
+/** The point the behind-the-DJ camera circles: just in front of the decks. */
+const BEHIND_FOCUS = new THREE.Vector3(0, 2.3, BOOTH_Z + 0.25);
+const LOOK = { yaw: 1.75, up: 0.75, down: 0.85 }; // how far you can turn your head
+const ORBIT = { yaw: 2.6, lo: 0.08, hi: 1.25, near: 1.6, far: 7 };
+/** Behind view to start with: over the DJ's right shoulder, the decks and the crowd both in shot. */
+const ORBIT_HOME = { yaw: -0.55, pitch: 0.32, dist: 3.2 };
 
 /** What the club's clock is following right now. */
 export interface ClubClock {
@@ -171,8 +180,12 @@ export class Club {
   private boothCentre = 0.3;
   /** Decks hidden: look up at the room from behind the booth, drag to look around. */
   private lookAround = false;
-  private look = { yaw: 0, pitch: 0, yawTo: 0, pitchTo: 0 };
   private centreMove: { from: number; to: number } | null = null;
+  private boothView: BoothView = 'eyes';
+  /** Head turn from straight ahead, while in the DJ's eyes. */
+  private look = { yaw: 0, pitch: 0 };
+  /** Camera around the DJ, while behind them: angle round from straight behind, elevation, distance. */
+  private orbit = { ...ORBIT_HOME };
   private width = 1;
   private height = 1;
   readonly clock: ClubClock = { live: false, bpm: 128, deck: null };
@@ -206,7 +219,6 @@ export class Club {
     this.controls.maxPolarAngle = Math.PI * 0.62;
     this.controls.autoRotateSpeed = 0.6;
     this.controls.addEventListener('start', () => (this.camMove = null));
-    this.bindLookDrag(r.domElement);
 
     this.scene.background = new THREE.Color(hex('graphite-1000'));
     this.scene.fog = this.fog;
@@ -495,44 +507,95 @@ export class Club {
     this.orbitReturn = { pos: this.camera.position.clone(), target: this.controls.target.clone() };
     this.controls.enabled = false;
     this.controls.autoRotate = false;
-    this.moveCamera(BOOTH_POSE.pos, this.lookAround ? ROOM_LOOK_TARGET : BOOTH_POSE.target);
+    const pose = this.boothPose();
+    this.moveCamera(pose.pos, pose.target);
     this.centreMove = { from: this.viewCentre, to: this.lookAround ? 0.5 : this.boothCentre };
+    this.dj.group.visible = this.boothView === 'behind';
   }
 
-  /** Hide or show the decks while you're on them: look up at the room, or back down at the gear. */
+  /** Hide or show the decks while you're on them: full-screen view of the room, or back over the gear. */
   setLookAround(on: boolean): void {
     if (on === this.lookAround) return;
     this.lookAround = on;
-    this.look = { yaw: 0, pitch: 0, yawTo: 0, pitchTo: 0 };
     if (this.mode !== 'booth') return;
-    this.moveCamera(BOOTH_POSE.pos, on ? ROOM_LOOK_TARGET : BOOTH_POSE.target);
+    const pose = this.boothPose();
+    this.moveCamera(pose.pos, pose.target);
     this.centreMove = { from: this.viewCentre, to: on ? 0.5 : this.boothCentre };
   }
 
-  /** Drag to turn your head while the decks are hidden. */
-  private bindLookDrag(el: HTMLElement): void {
-    let last: { x: number; y: number } | null = null;
-    el.addEventListener('pointerdown', (e) => {
-      if (this.mode !== 'booth' || !this.lookAround) return;
-      last = { x: e.clientX, y: e.clientY };
-      el.setPointerCapture(e.pointerId);
-    });
-    el.addEventListener('pointermove', (e) => {
-      if (!last) return;
-      const L = this.look;
-      L.yawTo = THREE.MathUtils.clamp(L.yawTo - (e.clientX - last.x) * 0.004, -1.4, 1.4);
-      L.pitchTo = THREE.MathUtils.clamp(L.pitchTo + (e.clientY - last.y) * 0.003, -0.5, 0.6);
-      last = { x: e.clientX, y: e.clientY };
-    });
-    const end = () => (last = null);
-    el.addEventListener('pointerup', end);
-    el.addEventListener('pointercancel', end);
+  /** Switch between the DJ's eyes and the camera behind the DJ. */
+  setBoothView(v: BoothView): void {
+    if (v === this.boothView) return;
+    this.boothView = v;
+    if (this.mode !== 'booth') return;
+    this.dj.group.visible = v === 'behind';
+    const pose = this.boothPose();
+    this.moveCamera(pose.pos, pose.target);
+  }
+
+  /** Drag on the view while on the decks: turn your head, or swing the camera round behind you. */
+  lookBy(dx: number, dy: number): void {
+    if (this.mode !== 'booth') return;
+    // a drag takes over from any camera move in progress, landing the view where it was heading
+    this.camMove = null;
+    if (this.centreMove) {
+      this.viewCentre = this.centreMove.to;
+      this.centreMove = null;
+      this.applyViewCentre();
+    }
+    if (this.boothView === 'eyes') {
+      this.look.yaw = THREE.MathUtils.clamp(this.look.yaw - dx * 0.004, -LOOK.yaw, LOOK.yaw);
+      this.look.pitch = THREE.MathUtils.clamp(this.look.pitch - dy * 0.004, -LOOK.down, LOOK.up);
+    } else {
+      this.orbit.yaw = THREE.MathUtils.clamp(this.orbit.yaw - dx * 0.005, -ORBIT.yaw, ORBIT.yaw);
+      this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch + dy * 0.004, ORBIT.lo, ORBIT.hi);
+    }
+  }
+
+  /** Scroll on the view behind the DJ to move the camera in or out. */
+  zoomBy(delta: number): void {
+    if (this.mode !== 'booth' || this.boothView !== 'behind') return;
+    this.orbit.dist = THREE.MathUtils.clamp(this.orbit.dist * Math.exp(delta * 0.0012), ORBIT.near, ORBIT.far);
+  }
+
+  /** Back to looking straight out over the decks. */
+  resetLook(): void {
+    this.look = { yaw: 0, pitch: 0 };
+    this.orbit = { ...ORBIT_HOME };
+    if (this.mode !== 'booth') return;
+    const pose = this.boothPose();
+    this.moveCamera(pose.pos, pose.target);
+  }
+
+  /** Where the camera sits and looks while on the decks, from the current view and head turn. */
+  private boothPose(): { pos: THREE.Vector3; target: THREE.Vector3 } {
+    if (this.boothView === 'eyes') {
+      const pos = BOOTH_POSE.pos.clone();
+      // decks hidden: eyes up and out over the room; otherwise down over the gear at the crowd
+      const ahead = (this.lookAround ? ROOM_LOOK_TARGET : BOOTH_POSE.target).clone().sub(pos);
+      const len = ahead.length();
+      const yaw0 = Math.atan2(ahead.x, ahead.z);
+      const pitch0 = Math.asin(ahead.y / len);
+      const yaw = yaw0 + this.look.yaw;
+      const pitch = THREE.MathUtils.clamp(pitch0 + this.look.pitch, -1.35, 1.2);
+      const dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
+      return { pos, target: pos.clone().addScaledVector(dir, len) };
+    }
+    // behind the DJ: circle a point just in front of the decks, starting straight behind (−z)
+    const { yaw, pitch, dist } = this.orbit;
+    const pos = new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)).multiplyScalar(dist).add(BEHIND_FOCUS);
+    // stay inside the room, in front of the LED wall and below the ceiling
+    pos.x = THREE.MathUtils.clamp(pos.x, -V.w / 2 + 0.4, V.w / 2 - 0.4);
+    pos.y = THREE.MathUtils.clamp(pos.y, STAGE.h + 0.6, V.h - 0.4);
+    pos.z = THREE.MathUtils.clamp(pos.z, STAGE.z0 + 0.6, V.d / 2 - 0.5);
+    return { pos, target: BEHIND_FOCUS.clone() };
   }
 
   /** Back onto the floor, where you were. */
   stepBack(): void {
     if (this.mode === 'room') return;
     this.mode = 'room';
+    this.dj.group.visible = false; // you've left the booth
     this.controls.enabled = true;
     const back = this.orbitReturn ?? { pos: VIEWS.floor.pos, target: VIEWS.floor.target };
     this.moveCamera(back.pos, back.target);
@@ -1157,18 +1220,16 @@ export class Club {
         this.centreMove = null;
       }
     }
-    if (this.mode === 'booth' && this.lookAround && !this.camMove) {
-      const L = this.look;
-      L.yaw += (L.yawTo - L.yaw) * 0.15;
-      L.pitch += (L.pitchTo - L.pitch) * 0.15;
-      const dir = ROOM_LOOK_TARGET.clone().sub(this.camera.position);
-      const sph = new THREE.Spherical().setFromVector3(dir);
-      sph.theta += L.yaw;
-      sph.phi = THREE.MathUtils.clamp(sph.phi - L.pitch, 0.25, Math.PI - 0.25);
-      this.controls.target.copy(this.camera.position).add(new THREE.Vector3().setFromSpherical(sph));
-    }
-    if (this.mode === 'booth') this.camera.lookAt(this.controls.target);
-    else this.controls.update();
+    if (this.mode === 'booth') {
+      if (!this.camMove) {
+        // follow the head turn / orbit, eased so a drag feels like moving your head
+        const pose = this.boothPose();
+        const k = 1 - Math.exp(-dt * 14);
+        this.camera.position.lerp(pose.pos, k);
+        this.controls.target.lerp(pose.target, k);
+      }
+      this.camera.lookAt(this.controls.target);
+    } else this.controls.update();
     const fwd = new THREE.Vector3();
     this.camera.getWorldDirection(fwd);
     if (this.takenOver) mx.setListener(this.camera.position, fwd); // your ears follow the camera

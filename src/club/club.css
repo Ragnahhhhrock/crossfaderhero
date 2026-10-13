@@ -380,3 +380,37 @@ button:focus-visible {
     max-width: none;
   }
 }
+
+/* on the decks: how to look around, sitting in the 3D gap above the controls */
+.club-look-hint {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin-top: 60px;
+  z-index: 3;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: var(--type-small);
+  color: var(--text-2);
+  background: var(--glass);
+  border: 1px solid var(--tint-8);
+  border-radius: var(--radius-input);
+  padding: var(--space-3) var(--space-5);
+  transition: opacity var(--duration-base);
+}
+.club-look-hint.faded {
+  opacity: 0;
+}
+.club-look-hint kbd {
+  font-family: var(--font-lcd);
+  font-size: var(--type-micro);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip);
+  padding: 0 var(--space-2);
+}
+.mode-booth .club-stage {
+  cursor: grab;
+}
+.mode-booth .club-stage:active {
+  cursor: grabbing;
+}
