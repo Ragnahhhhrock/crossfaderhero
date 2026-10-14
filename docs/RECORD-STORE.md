@@ -10,6 +10,7 @@ The shop is stocked from the same music folders as your decks and crates (USB A,
 - **Digging.** Walk up to a bin and press **E** (or click it). Records flip past like a crate: arrows, scroll, or the letter tabs along the top to jump to an artist's letter. The price sticker is on the sleeve; **P** picks the record up to listen to, **B** puts it in your bag.
 - **Listening station** (left). A turntable on a table with speakers and headphones. Records you hold (up to 4) or have in your bag can be tried here: *slide the vinyl out of its sleeve → place on the platter → start the platter → lower the needle*, or press **Play** for both. Scrub along the record to move the needle, switch 33/45, lift the record off, slip it back in its sleeve. It uses the real turntable audio (`audio/turntable.ts`), so the platter, needle and slipmat behave as they do on the decks, and the 3D turntable is the same model. **Step away and the record keeps playing** while you walk round and dig: the shop speakers get quieter and pan as you move away from the station (never silent), a *now playing* chip with a Stop button sits bottom-right, and putting that record back in its bin takes it off the platter.
 - **Record bag and counter** (right). The bag holds 12 records. At the counter the clerk rings up the bag, and you pay from your cash (you start with $150). Paid-for records are filed in a crate called **Record store finds** in your collection, so they show up with your other crates in the bedroom and club.
+- **Set dressing.** Gig posters and festival line-ups for made-up acts (Velvet Static, Mira Volt, Dusthaus, Outer Orbit, Desert Pulse…), a *What's on* corkboard of upcoming events (open decks, DJ battle heats, record fair, in-store signing), and framed memorabilia: gold and platinum discs, a signed setlist, backstage passes, a signed drumhead, a crew tee and ticket stubs. Vintage audio: a shelf unit of boomboxes, portable CD players, personal stereos, tapes and CDs beside the listening station, a glass display case and hi-fi stack by the door, a radio on the counter and big boomboxes in the back corners. All drawn on canvases or built from primitives (`src/store/decor.ts`); none of it is pickable yet.
 - **Prices** are stable per record: $6–$19, more for pressings before 1995, double for the rare ones (about 1 in 13). See `src/store/pricing.ts`.
 
 ## Code
@@ -23,6 +24,7 @@ The shop is stocked from the same music folders as your decks and crates (USB A,
 | `src/state/wallet.ts` | Cash and owned records (saved in the browser) |
 | `src/store/purchase.ts` | Checkout: take money, mark owned, file into the store crate |
 | `src/store/Store.ts` | The three.js shop: walking, collision, bins, counter, clerk, listening station |
+| `src/store/decor.ts` | Posters, events board, memorabilia and vintage audio gear |
 | `src/store/StoreView.tsx`, `Dig.tsx`, `Station.tsx`, `Counter.tsx`, `store.css` | The screens |
 | `src/club/people.ts` | The clerk is a `clerk` style of the club's instanced figures |
 

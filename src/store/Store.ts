@@ -4,10 +4,11 @@ import { engine } from '../audio/engine';
 import { Figures } from '../club/people';
 import { alpha, font, hex, hue, token } from '../design/tokens';
 import { paletteFor } from '../library/sleeve';
-import { floorTexture, posterTexture } from '../room/textures';
+import { floorTexture } from '../room/textures';
 import { buildTurntable, type TurntableModel } from '../room/turntableModel';
 import type { Track } from '../types';
 import { shopSleeve } from './art';
+import { counterBoombox, decorateFront, decorateWalls } from './decor';
 import type { Bin } from './stock';
 
 /*
@@ -61,6 +62,8 @@ const VIEWS: Record<Exclude<StoreViewMode, 'walk'>, Pose> = {
   station: { x: STATION.x - 0.02, y: 1.36, z: STATION.z + 0.78, yaw: 0, pitch: -0.98 },
   counter: { x: COUNTER.x - 0.4, y: 1.62, z: COUNTER.z + 2.15, yaw: 0.1, pitch: -0.22 },
 };
+
+const DOOR = { x: -1.2, w: 1.1 };
 
 const START: Pose = { x: 0.6, y: EYE, z: -1.3, yaw: 0, pitch: -0.05 };
 
@@ -342,6 +345,9 @@ export class Store {
     for (let i = 0; i < 4; i++) ct.add(box(0.26, 0.012, 0.18, new THREE.MeshStandardMaterial({ color: hex('print-paper'), roughness: 1 }), 0.55, COUNTER_SIZE.h + 0.006 + i * 0.012, -0.05));
     const reader = box(0.09, 0.02, 0.14, black, 0.1, COUNTER_SIZE.h + 0.01, 0.2);
     ct.add(reader);
+    const radio = counterBoombox();
+    radio.position.set(-1.05, COUNTER_SIZE.h, 0.05);
+    ct.add(radio);
     const counterSign = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.35), new THREE.MeshBasicMaterial({ map: signTex(['PAY HERE', 'cash or card'], token('print-sun')) }));
     counterSign.position.set(0.8, 2.0, -0.2);
     ct.add(counterSign);
@@ -354,6 +360,11 @@ export class Store {
     this.clerk = new Figures([{ x: COUNTER.x + 0.2, y: 0, z: COUNTER.z - 0.75, yaw: 0, scale: 1, style: 'clerk', phase: 0, r: 0.3 }], 41, 'staff');
     this.clerk.group.userData.target = { kind: 'counter' } satisfies StoreTarget;
     s.add(this.clerk.group);
+
+    // ---- posters, the events board, the vintage-audio shelves and the display case by the door
+    const front = new THREE.Group();
+    for (const b of decorateFront(front, { W, D: 0 }, DOOR)) this.boxes.push({ ...b, fixed: true });
+    s.add(front);
 
     // ---- lights for the front of the shop
     const warm = new THREE.PointLight(hex('room-lamp'), 9, 11, 1.6);
@@ -409,11 +420,11 @@ export class Store {
     }
     // the shop door: a glass-panelled door in the entrance wall, with an OPEN sign
     const door = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 2.3), new THREE.MeshStandardMaterial({ color: hex('room-sky-low'), emissive: new THREE.Color(hex('room-sky-top')), emissiveIntensity: 0.6, roughness: 0.2 }));
-    door.position.set(-1.2, 1.15, -0.012);
+    door.position.set(DOOR.x, 1.15, -0.012);
     door.rotation.y = Math.PI;
     g.add(door);
     const open = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.23), new THREE.MeshBasicMaterial({ map: signTex(['OPEN'], token('hot-teal')) }));
-    open.position.set(-1.2, 1.55, -0.02);
+    open.position.set(DOOR.x, 1.55, -0.02);
     open.rotation.y = Math.PI;
     g.add(open);
 
@@ -429,17 +440,13 @@ export class Store {
     }
     g.add(new THREE.HemisphereLight(hex('room-fill-sky'), hex('room-fill-ground'), 0.9));
 
-    // neon on the back wall, posters on the sides
+    // neon on the back wall; posters, line-ups and framed memorabilia round the walls
     const neon = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: neonSign(), transparent: true }));
     neon.position.set(0, 2.45, -D + 0.02);
     g.add(neon);
-    const kinds: (0 | 1 | 2)[] = [0, 1, 2];
-    for (let i = 0, z = -4.2; z > -D + 1.5; i++, z -= 2.4) {
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.88), new THREE.MeshStandardMaterial({ map: posterTexture(kinds[i % 3]), roughness: 0.9 }));
-      p.position.set(-W / 2 + 0.02, 1.7, z);
-      p.rotation.y = Math.PI / 2;
-      g.add(p);
-    }
+    const span = Math.min(6, D - 4);
+    const display = bins.length ? { z0: -FRONT + 1.2, z1: -FRONT + 1.2 - span } : null;
+    for (const b of decorateWalls(g, { W, D }, display)) this.boxes.push(b);
 
     // ---- bins
     const trayMat = new THREE.MeshStandardMaterial({ color: hex('room-crate'), roughness: 0.8 });
@@ -508,7 +515,7 @@ export class Store {
     const picks = (withArt.length >= 12 ? withArt : [...withArt, ...all.filter((t) => !t.artworkUrl)]).slice(0, 12);
     const token0 = this.stockToken;
     const shelfMat = new THREE.MeshStandardMaterial({ color: hex('room-crate'), roughness: 0.8 });
-    const z0 = -FRONT + 1.2;
+    const z0 = -FRONT + 1.2; // keep in step with the display gap in buildShell
     const span = Math.min(6, D - 4);
     const per = Math.max(1, Math.floor(span / 0.4));
     for (let r = 0; r < 2; r++) {
