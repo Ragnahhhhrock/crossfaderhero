@@ -56,6 +56,8 @@ At the start you choose what's on the desk (change it any time with **Gear** in 
 
 **Record crates.** "Choose a folder for a crate" turns a folder of MP3s into a crate of vinyl records: each track gets a sleeve (its cover art, or a generated design), a centre label, and its BPM and key marked on the corner once it's been pressed (analysed). Each folder is its own crate, shown on the floor of the bedroom — click one to open it. Flip through, sort by BPM, key, title, artist or genre, pull a record out and put it on turntable A or B (double-click puts it on a free one). The same record on both decks makes a double for beat juggling.
 
+**Cover art.** Tracks with no picture embedded in the MP3 get their cover looked up online by artist + album (or title): the Worker's `/api/cover` endpoint (`worker/cover.js`, also served by `npm run dev`) searches Deezer, then iTunes, checks the artist and album/title match, and returns the image from our own origin. Covers show on the USB browser, the CDJ jog wheels, record sleeves and labels, the 3D crates and the record store. Tracks off one album share a lookup; covers and misses are cached in the browser (IndexedDB) and at the edge. Only artist, album and title are sent — never the audio. If nothing matches, the generated sleeve stays.
+
 **Sort your music** (**Sort into USBs** in the USB browser, **Sort into crates** in the record crates). Every track from every folder you've plugged in is one collection; sort it into:
 
 - **USB drives** for the CDJs — as many as you like (Warm-up, Peak time, Back-up…), each a stick of 8–128 GB with a fill gauge; copying stops when it's full. Each drive gets its own tab in the USB browser, next to USB A / B.

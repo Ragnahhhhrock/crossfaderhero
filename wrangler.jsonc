@@ -2,12 +2,12 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "crossfaderhero",
   "compatibility_date": "2026-10-01",
-  // Only the Google tag gateway path runs the Worker; everything else is a static asset.
+  // Only the Google tag gateway path and /api/* (cover art lookup) run the Worker; everything else is a static asset.
   "main": "worker/index.js",
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/k7q2m", "/k7q2m/*"]
+    "run_worker_first": ["/k7q2m", "/k7q2m/*", "/api/*"]
   }
 }

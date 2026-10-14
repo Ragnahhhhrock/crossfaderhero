@@ -6,7 +6,7 @@ import { hex } from '../design/tokens';
 import { buildCdj, buildMixer, buildSpeaker, type Action, type CdjModel, type MixerModel, type SpeakerModel } from './models';
 import { buildTurntable, TT, type TurntableModel } from './turntableModel';
 import { floorTexture, nightTexture, posterTexture, rugTexture } from './textures';
-import { artworkImage, drawSleeve } from '../library/sleeve';
+import { artworkImageWhenReady, drawSleeve } from '../library/sleeve';
 import type { Gear } from '../state/setup';
 import type { Track } from '../types';
 
@@ -339,7 +339,7 @@ export class Room {
           drawSleeve(g, 128, t, null);
           const tex = new THREE.CanvasTexture(c);
           tex.colorSpace = THREE.SRGBColorSpace;
-          void artworkImage(t).then((img) => {
+          void artworkImageWhenReady(t).then((img) => {
             if (!img) return;
             drawSleeve(g, 128, t, img);
             tex.needsUpdate = true;

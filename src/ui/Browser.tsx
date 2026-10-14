@@ -8,6 +8,7 @@ import { ScanProgress } from './ScanProgress';
 import { Organizer } from './Organizer';
 import { useCollection } from '../state/collection';
 import { bytesUsed, formatBytes, poolTracks, resolve } from '../library/sorting';
+import { artworkUrlOf } from '../library/cover';
 
 type SortKey = 'title' | 'artist' | 'bpm' | 'key' | 'genre' | 'time';
 const ROW = 34;
@@ -233,7 +234,7 @@ export function Browser() {
                     style={{ top: (first + i) * ROW }}
                     onDoubleClick={() => loadTo(slot, t)}
                   >
-                    <span className="td art">{t.artworkUrl ? <img src={t.artworkUrl} alt="" loading="lazy" /> : <i />}</span>
+                    <span className="td art">{artworkUrlOf(t) ? <img src={artworkUrlOf(t)} alt="" loading="lazy" /> : <i />}</span>
                     <span className="td grow title" title={t.path}>{t.meta.title}</span>
                     <span className="td grow">{t.meta.artist}</span>
                     <span className="td num">

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Analysis, SlotId, Track } from '../types';
 import { readTags } from '../library/id3';
+import { lookupCover } from '../library/cover';
 import { track } from '../analytics/ga';
 import { decodeForAnalysis, analyzeBuffer, getCachedAnalysis, saveAnalysis } from '../library/analysisService';
 import {
@@ -152,6 +153,13 @@ export const useLibrary = create<LibraryState>((setState, getState) => {
     tracks.sort((a, b) => a.path.localeCompare(b.path));
     patchSlot(slot, { status: 'ready', found: tracks.length, scanned: files.length, total: files.length, tracks });
     pumpQueue();
+    // tracks with no picture in the MP3: look the cover up online (tracks off one album share a lookup)
+    for (const t of tracks) {
+      if (t.artworkUrl) continue;
+      void lookupCover(t).then((artworkUrl) => {
+        if (artworkUrl && token === scanToken[slot]) patchTrack(t.key, { artworkUrl });
+      });
+    }
   }
 
   // ---- background analysis queue (one track at a time) ----

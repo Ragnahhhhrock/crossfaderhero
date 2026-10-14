@@ -7,8 +7,12 @@
  * and its collection hits load from crossfaderhero.com instead of
  * googletagmanager.com / google-analytics.com.
  *
+ * /api/cover looks up album art for tracks without embedded pictures (see cover.js).
+ *
  * Health checks: /k7q2m/healthy and /k7q2m/?validate_geo=healthy both return "ok".
  */
+
+import { COVER_PATH, handleCover } from './cover.js';
 
 const TAG_ID = 'G-R8RG80E41X';
 const MEASUREMENT_PATH = '/k7q2m';
@@ -52,6 +56,14 @@ export default {
         return await tagGateway(request);
       } catch {
         return new Response('gateway error', { status: 502 });
+      }
+    }
+    if (pathname === COVER_PATH) {
+      if (request.method !== 'GET') return new Response('method not allowed', { status: 405 });
+      try {
+        return await handleCover(request);
+      } catch {
+        return new Response('cover lookup failed', { status: 502 });
       }
     }
     return env.ASSETS.fetch(request);

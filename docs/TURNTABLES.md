@@ -7,7 +7,7 @@ The Battle DJ path is vinyl only. Scratching, beat juggling and battle routines 
 ## From MP3 folder to record crate
 
 1. The player adds a music folder of MP3s (same folder access as the CDJ USBs; music never leaves their computer).
-2. Each track is "pressed" to a virtual vinyl record: a sleeve with the cover art from the ID3 tags (or a generated plain/white-label sleeve), artist and title on the centre label, and the BPM and key written on the sleeve like a DJ's marker notes.
+2. Each track is "pressed" to a virtual vinyl record: a sleeve with the cover art from the ID3 tags or, failing that, looked up online by artist and album (or a generated plain/white-label sleeve), artist and title on the centre label, and the BPM and key written on the sleeve like a DJ's marker notes.
 3. The records sit in a **crate** next to the decks in the 3D bedroom (and later in a record bag at gigs and contests).
 
 ## Using the crate

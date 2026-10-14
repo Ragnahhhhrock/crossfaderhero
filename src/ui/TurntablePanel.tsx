@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties, type PointerEvent } from 'react';
 import { GROOVE_OUTER, grooveRadius, positionAtRadius, SECONDS_PER_REV } from '../audio/platter';
 import { RECORD_R, recordCanvas } from '../library/sleeve';
+import { artworkUrlOf } from '../library/cover';
 import type { Turntable } from '../audio/turntable';
 import type { DeckId } from '../types';
 import { alpha, font, shade, token } from '../design/tokens';
@@ -53,7 +54,7 @@ function PlatterView({ tt }: { tt: Turntable }) {
 
   // press the record image when a new one goes on
   useEffect(() => {
-    const key = tt.track ? `${tt.track.key}|${tt.analysis?.bpm}` : '';
+    const key = tt.track ? `${tt.track.key}|${tt.analysis?.bpm}|${artworkUrlOf(tt.track) ?? ''}` : '';
     if (key === recordKey.current) return;
     recordKey.current = key;
     record.current = tt.track ? recordCanvas(tt.track, tt.analysis, 640) : null;

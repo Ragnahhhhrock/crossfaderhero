@@ -6,6 +6,7 @@
 import type { Analysis, Track } from '../types';
 import { alpha, font, shade, token } from '../design/tokens';
 import { GROOVE_INNER, GROOVE_OUTER, positionAtRadius } from '../audio/platter';
+import { artworkUrlOf, coverSettled } from './cover';
 
 /** Record radius in metres (a 12" record). */
 export const RECORD_R = 0.152;
@@ -39,8 +40,17 @@ export function paletteFor(t: Track): Palette {
 const images = new Map<string, Promise<HTMLImageElement | null>>();
 /** Load (once) the track's cover art, or null if it has none or it won't decode. */
 export function artworkImage(t: Track): Promise<HTMLImageElement | null> {
-  const url = t.artworkUrl;
+  const url = artworkUrlOf(t);
   if (!url) return Promise.resolve(null);
+  return loadImage(url);
+}
+
+/** Like artworkImage, but waits for an online cover lookup that's still running. */
+export function artworkImageWhenReady(t: Track): Promise<HTMLImageElement | null> {
+  return coverSettled(t).then((url) => (url ? loadImage(url) : null));
+}
+
+function loadImage(url: string): Promise<HTMLImageElement | null> {
   let p = images.get(url);
   if (!p) {
     p = new Promise((resolve) => {
@@ -158,7 +168,7 @@ export function drawSleeve(g: CanvasRenderingContext2D, size: number, t: Track, 
 const sleeveUrls = new Map<string, Promise<string>>();
 /** A sleeve as an image URL for the crate browser (cached per track). */
 export function sleeveUrl(t: Track, size = 220): Promise<string> {
-  const id = `${t.key}|${t.analysis ? `${Math.round(t.analysis.bpm)}${t.analysis.camelot}` : ''}|${size}`;
+  const id = `${t.key}|${artworkUrlOf(t) ? 'art' : ''}|${t.analysis ? `${Math.round(t.analysis.bpm)}${t.analysis.camelot}` : ''}|${size}`;
   let p = sleeveUrls.get(id);
   if (!p) {
     p = artworkImage(t).then((img) => {
@@ -268,8 +278,8 @@ export function recordCanvas(t: Track | null, a: Analysis | null, size: number, 
   c.width = c.height = size;
   const g = c.getContext('2d')!;
   drawRecord(g, size, t, a, null);
-  if (t?.artworkUrl) {
-    void artworkImage(t).then((img) => {
+  if (t) {
+    void artworkImageWhenReady(t).then((img) => {
       if (!img) return;
       drawRecord(g, size, t, a, img);
       onReady?.(c);

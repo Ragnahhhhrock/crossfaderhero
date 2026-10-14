@@ -7,6 +7,7 @@ import { toast } from '../state/toasts';
 import { Fader } from './controls';
 import { formatTime, useAnimationFrame, useDeck, usePolled } from './hooks';
 import { hotCueVar, OverviewWaveform } from './waveforms';
+import { artworkUrlOf } from '../library/cover';
 
 const SECONDS_PER_REV = 1.8; // a 33⅓ rpm platter
 
@@ -98,7 +99,7 @@ function JogWheel({ id }: { id: DeckId }) {
         <div className="jog-marker" />
       </div>
       <div className="jog-centre">
-        {deck.track?.artworkUrl ? <img src={deck.track.artworkUrl} alt="" /> : <span>{id}</span>}
+        {artworkUrlOf(deck.track) ? <img src={artworkUrlOf(deck.track)} alt="" /> : <span>{id}</span>}
       </div>
     </div>
   );
