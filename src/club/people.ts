@@ -33,12 +33,13 @@ interface Pose {
   nod: number;
 }
 
-type Cut = 'short' | 'long' | 'afro' | 'bun' | 'mohawk' | 'buzz' | 'bald';
-type Hat = 'none' | 'cap' | 'beanie' | 'bucket';
-type Sleeves = 'long' | 'short' | 'none';
+export type Cut = 'short' | 'long' | 'afro' | 'bun' | 'ponytail' | 'mohawk' | 'buzz' | 'bald';
+export type Hat = 'none' | 'cap' | 'beanie' | 'bucket';
+export type Sleeves = 'long' | 'short' | 'none';
+export type Facial = 'none' | 'stubble' | 'moustache' | 'goatee' | 'beard';
 
 /** The person: face, build, hair, ink and metal. Never changes. */
-interface Look {
+export interface Look {
   skin: string;
   hair: string;
   cut: Cut;
@@ -54,7 +55,7 @@ interface Look {
   mouthW: number;
   brows: boolean;
   browTilt: number;
-  beard: boolean;
+  facial: Facial;
   glasses: boolean;
   /** Ear L, ear R, nose, eyebrow, lip. */
   studs: [boolean, boolean, boolean, boolean, boolean];
@@ -65,10 +66,14 @@ interface Look {
   ink: string;
   /** How hard they go, 0.6..1.3. */
   vigour: number;
+  /** Hoops instead of studs in the ears. */
+  hoops?: boolean;
+  /** Limb thickness, 1 = average. */
+  bulk?: number;
 }
 
 /** What they're wearing. */
-interface Outfit {
+export interface Outfit {
   top: string;
   topW: number;
   sleeves: Sleeves;
@@ -79,6 +84,9 @@ interface Outfit {
   hat: Hat;
   hatC: string;
   shades: boolean;
+  /** A hoodie's hood behind the neck. */
+  hood?: boolean;
+  boots?: boolean;
 }
 
 const SKINS = ['club-skin-1', 'club-skin-2', 'club-skin-3', 'club-skin-4', 'club-skin-5', 'club-skin-6', 'club-skin-7', 'club-skin-8', 'club-skin-9', 'club-skin-10'];
@@ -195,11 +203,11 @@ const TAU = Math.PI * 2;
 type PartName =
   | 'legL' | 'legR' | 'shortL' | 'shortR' | 'shoeL' | 'shoeR' | 'torso'
   | 'armL' | 'armR' | 'sleeveL' | 'sleeveR' | 'tatL' | 'tatR'
-  | 'head' | 'eyes' | 'brows' | 'nose' | 'mouth' | 'beard' | 'glasses' | 'studs'
+  | 'head' | 'eyes' | 'brows' | 'nose' | 'mouth' | 'beard' | 'tache' | 'goatee' | 'glasses' | 'studs' | 'hoops' | 'hood'
   | 'hair' | 'hairBack' | 'hairPuff' | 'mohawk' | 'hatCrown' | 'hatBrim';
 
 /** Parts drawn more than once per person (left/right eyes, five piercings). */
-const COPIES: Partial<Record<PartName, number>> = { eyes: 2, brows: 2, studs: 5 };
+const COPIES: Partial<Record<PartName, number>> = { eyes: 2, brows: 2, studs: 5, hoops: 2 };
 
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const out = new THREE.Matrix4();
@@ -248,7 +256,7 @@ function makeLook(rand: () => number): Look {
     mouthW: between(rand, 0.7, 1.3),
     brows: rand() < 0.9,
     browTilt: between(rand, -0.25, 0.25),
-    beard: rand() < 0.22,
+    facial: ((f) => (f < 0.1 ? 'beard' : f < 0.16 ? 'stubble' : f < 0.2 ? 'goatee' : f < 0.22 ? 'moustache' : 'none'))(rand()),
     glasses: rand() < 0.14,
     studs: [ear, ear && rand() < 0.75, pierced && rand() < 0.4, pierced && rand() < 0.2, pierced && rand() < 0.2],
     metal: rand() < 0.75 ? 'tt-chrome' : 'print-gold',
@@ -339,8 +347,12 @@ export class Figures {
       nose: mk('nose', box(0.024, 0.04, 0.03), skin),
       mouth: mk('mouth', box(0.042, 0.01, 0.012), skin),
       beard: mk('beard', new THREE.SphereGeometry(0.115, 12, 8, 0, Math.PI, Math.PI * 0.56, Math.PI * 0.4)),
+      tache: mk('tache', box(0.07, 0.016, 0.02)),
+      goatee: mk('goatee', box(0.045, 0.05, 0.035)),
       glasses: mk('glasses', box(0.118, 0.032, 0.012), lens),
       studs: mk('studs', new THREE.SphereGeometry(0.0095, 6, 4), metal),
+      hoops: mk('hoops', new THREE.TorusGeometry(0.018, 0.004, 6, 14), metal),
+      hood: mk('hood', box(0.24, 0.09, 0.09), clothes),
       hair: mk('hair', new THREE.SphereGeometry(0.118, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55)),
       hairBack: mk('hairBack', box(0.21, 0.24, 0.06)),
       hairPuff: mk('hairPuff', new THREE.SphereGeometry(0.12, 12, 10)),
@@ -367,6 +379,13 @@ export class Figures {
   setCount(n: number): void {
     this.visibleCount = Math.max(0, Math.min(this.people.length, Math.round(n)));
     for (const [name, p] of Object.entries(this.parts)) p.count = this.visibleCount * (COPIES[name as PartName] ?? 1);
+  }
+
+  /** Dress one person as someone in particular: the player's own DJ. */
+  restyle(i: number, look: Look, outfit: Outfit): void {
+    this.looks[i] = look;
+    this.outfits[i] = outfit;
+    this.paint(i);
   }
 
   /** What's playing. Changes settle after a moment so a quick cut doesn't make everyone flinch. */
@@ -418,7 +437,13 @@ export class Figures {
     set('brows', L.hair === 'club-hair-6' ? 'club-hair-3' : L.hair, 1);
     set('nose', L.skin);
     set('mouth', 'club-lip');
-    set('beard', L.hair);
+    const stubble = L.facial === 'stubble';
+    this.parts.beard.setColorAt(i, stubble ? c.setHex(hex(L.hair)).lerp(new THREE.Color(hex(L.skin)), 0.55) : c.setHex(hex(L.hair)));
+    set('tache', L.hair);
+    set('goatee', L.hair);
+    set('hood', O.top);
+    set('hoops', L.metal, 0);
+    set('hoops', L.metal, 1);
     set('glasses', O.shades ? 'print-ink' : 'graphite-500');
     for (let k = 0; k < 5; k++) set('studs', L.metal, k);
     for (const h of ['hair', 'hairBack', 'hairPuff', 'mohawk'] as const) set(h, L.hair);
@@ -469,7 +494,8 @@ export class Figures {
     const legTop = L.legH - pose.dip;
     const legScale = legTop / LEG_H;
     const hipX = L.torsoW * 0.24;
-    const legW = O.baggy ? 1.3 : 1;
+    const bulk = L.bulk ?? 1;
+    const legW = (O.baggy ? 1.3 : 1) * bulk;
     // hips sway: legs tilt from planted feet, the body rides on top
     const tilt = pose.roll * 0.5;
     const hipShift = -legTop * Math.sin(tilt);
@@ -482,21 +508,23 @@ export class Figures {
       this.put(leg, i, this.at(rootM, x, 0, 0, legW, legScale, legW, 0, 0, tilt));
       const h = legTop - 0.16;
       this.put(short, i, O.shorts ? this.at(rootM, x - h * Math.sin(tilt), h * Math.cos(tilt), 0, 1, 1, 1, 0, 0, tilt) : ZERO);
-      this.put(shoe, i, this.at(rootM, x, 0.04, 0.04));
+      this.put(shoe, i, O.boots ? this.at(rootM, x, 0.075, 0.03, 1.08, 1.9, 0.92) : this.at(rootM, x, 0.04, 0.04));
     }
 
     // upper body: dips with the knees, leans and rolls with the groove
     loc.compose(v.set(hipShift, legTop * Math.cos(tilt), 0), q.setFromEuler(e.set(pose.lean, 0, pose.roll)), s.set(1, 1, 1));
     upperM.multiplyMatrices(rootM, loc);
     const torsoW = L.torsoW * O.topW;
-    this.put('torso', i, this.at(upperM, 0, 0, 0, torsoW, L.torsoH, L.torsoD * (O.topW > 1.1 ? 1.12 : 1)));
+    const torsoD = L.torsoD * (O.topW > 1.1 ? 1.12 : 1);
+    this.put('torso', i, this.at(upperM, 0, 0, 0, torsoW, L.torsoH, torsoD));
+    this.put('hood', i, O.hood ? this.at(upperM, 0, L.torsoH - 0.02, -torsoD / 2 - 0.02, torsoW / 0.4, 1, 1) : ZERO);
 
     for (const [side, arm, sleeve, tat, a, cover] of [
       [-1, 'armL', 'sleeveL', 'tatL', pose.armL, L.tatL],
       [1, 'armR', 'sleeveR', 'tatR', pose.armR, L.tatR],
     ] as const) {
       // shoulder joint: raise forwards/up around x, swing out around z
-      loc.compose(v.set(side * (torsoW / 2 + 0.04), L.torsoH - 0.05, 0), q.setFromEuler(e.set(-a[0], 0, side * a[1], 'XZY')), s.set(1, L.armS, 1));
+      loc.compose(v.set(side * (torsoW / 2 + 0.04), L.torsoH - 0.05, 0), q.setFromEuler(e.set(-a[0], 0, side * a[1], 'XZY')), s.set(bulk, L.armS, bulk));
       armM.multiplyMatrices(upperM, loc);
       this.put(arm, i, armM);
       this.put(sleeve, i, O.sleeves === 'short' ? this.at(armM, 0, 0, 0, O.topW, 1, O.topW) : ZERO);
@@ -518,7 +546,10 @@ export class Figures {
     }
     this.put('nose', i, this.at(headM, 0, -0.012, 0.104, L.noseS[0], L.noseS[1], 1));
     this.put('mouth', i, this.at(headM, 0, -0.05, 0.094, L.mouthW, 1, 1));
-    this.put('beard', i, L.beard ? headM : ZERO);
+    const fh = L.facial;
+    this.put('beard', i, fh === 'beard' ? headM : fh === 'stubble' ? this.at(headM, 0, 0, 0, 1.002, 1.002, 1.002) : ZERO);
+    this.put('tache', i, fh === 'moustache' || fh === 'goatee' ? this.at(headM, 0, -0.033, 0.1, 1, 1, 1) : ZERO);
+    this.put('goatee', i, fh === 'goatee' ? this.at(headM, 0, -0.083, 0.074) : ZERO);
     this.put('glasses', i, L.glasses || O.shades ? this.at(headM, 0, 0.013, 0.106) : ZERO);
     const stud = [
       [-0.108, -0.025, 0],
@@ -527,7 +558,8 @@ export class Figures {
       [L.eyeGap + 0.02, 0.05, 0.094],
       [0.014, -0.058, 0.092],
     ];
-    stud.forEach(([x, y, z], k) => this.put('studs', i, L.studs[k] ? this.at(headM, x, y, z) : ZERO, k));
+    stud.forEach(([x, y, z], k) => this.put('studs', i, L.studs[k] && !(k < 2 && L.hoops) ? this.at(headM, x, y, z) : ZERO, k));
+    for (const k of [0, 1]) this.put('hoops', i, L.studs[k] && L.hoops ? this.at(headM, k ? 0.111 : -0.111, -0.045, 0, 1, 1, 1, 0, Math.PI / 2) : ZERO, k);
 
     // hair, then any hat over it
     const cut = L.cut;
@@ -537,7 +569,13 @@ export class Figures {
     this.put(
       'hairPuff',
       i,
-      cut === 'afro' && O.hat === 'none' ? this.at(headM, 0, 0.035, -0.015, 1.25, 1.15, 1.25) : cut === 'bun' ? this.at(headM, 0, 0.1, -0.08, 0.4, 0.4, 0.4) : ZERO,
+      cut === 'afro' && O.hat === 'none'
+        ? this.at(headM, 0, 0.035, -0.015, 1.25, 1.15, 1.25)
+        : cut === 'bun'
+          ? this.at(headM, 0, 0.1, -0.08, 0.4, 0.4, 0.4)
+          : cut === 'ponytail'
+            ? this.at(headM, 0, -0.04, -0.13, 0.3, 0.62, 0.3, 0.35)
+            : ZERO,
     );
     this.put('mohawk', i, cut === 'mohawk' && O.hat === 'none' ? this.at(headM, 0, 0.1, -0.01) : ZERO);
     const hat = O.hat;

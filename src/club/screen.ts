@@ -10,6 +10,8 @@ export class LedWall {
   readonly texture: THREE.CanvasTexture;
   /** The wall's average colour this frame, for the light it spills on the stage. */
   readonly spill = new THREE.Color();
+  /** The DJ on the decks, billed on the logo screen. Empty: the game's name. */
+  djName = '';
   private ctx: CanvasRenderingContext2D;
   private small: HTMLCanvasElement;
   private sctx: CanvasRenderingContext2D;
@@ -251,8 +253,11 @@ export class LedWall {
     ctx.fillRect(fx - 10, cy - 22, 20, 44);
     ctx.textAlign = 'center';
     ctx.fillStyle = token('ink-100');
-    ctx.font = font('ui', 46, 700);
-    ctx.fillText('Crossfader Hero', cx, h * 0.8);
+    const bill = this.djName || 'Crossfader Hero';
+    let size = 46;
+    ctx.font = font('ui', size, 700);
+    while (size > 20 && ctx.measureText(bill).width > w * 0.9) ctx.font = font('ui', (size -= 2), 700);
+    ctx.fillText(bill, cx, h * 0.8);
     ctx.font = font('lcd', 22);
     ctx.fillStyle = hue(h0 + t * 0.05, 1, 0.65);
     ctx.fillText('crossfaderhero.com', cx, h * 0.92);

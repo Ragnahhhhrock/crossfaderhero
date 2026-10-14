@@ -20,6 +20,8 @@ import { CareerChip, Coach, LessonsModal, Welcome } from './ui/Career';
 import { TurntablePanel } from './ui/TurntablePanel';
 import { Crates } from './ui/Crates';
 import { GearPicker } from './ui/GearPicker';
+import { CharacterBuilder } from './ui/CharacterBuilder';
+import { useCharacter } from './state/character';
 import { initSetup, useSetup } from './state/setup';
 import type { Turntable } from './audio/turntable';
 import { TipLayer, Tour } from './ui/Tips';
@@ -269,14 +271,16 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
   const onboarded = useCareer((s) => s.onboarded);
   const gear = useSetup((s) => s.gear);
   const [gearOpen, setGearOpen] = useState(false);
+  const character = useCharacter((s) => s.character);
+  const [characterOpen, setCharacterOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('room');
   // in the club the first-visit questions wait until you jump on the decks
   const askSetup = !club || mode === 'booth';
   const touring = useTips((s) => s.touring);
   const tourSeen = useTips((s) => s.tourSeen);
   const startTour = useTips((s) => s.startTour);
-  const setupPending = askSetup && (!onboarded || gear === null);
-  const modal = help || lessonsOpen || setupPending || gearOpen || touring;
+  const setupPending = askSetup && (!onboarded || gear === null || character === null);
+  const modal = help || lessonsOpen || setupPending || gearOpen || characterOpen || touring;
   const [zoom, setZoom] = useState(1);
   setUiPaused(mode === 'room');
   const [usbOpen, setUsbOpenRaw] = useState(false);
@@ -343,10 +347,10 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
 
   // first time at the decks: walk through the booth once the setup questions are answered
   useEffect(() => {
-    if (mode !== 'booth' || tourSeen || touring || setupPending || help || lessonsOpen || gearOpen) return;
+    if (mode !== 'booth' || tourSeen || touring || setupPending || help || lessonsOpen || gearOpen || characterOpen) return;
     const t = window.setTimeout(startTour, 900); // let the booth slide in first
     return () => clearTimeout(t);
-  }, [mode, tourSeen, touring, setupPending, help, lessonsOpen, gearOpen, startTour]);
+  }, [mode, tourSeen, touring, setupPending, help, lessonsOpen, gearOpen, characterOpen, startTour]);
 
   // the 3D view frames the gear in the gap above the controls
   useEffect(() => {
@@ -455,6 +459,11 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
           </a>
         </div>
         <div className="topbar-right">
+          {character && (
+            <button className="tiny dj-chip" onClick={() => setCharacterOpen(true)} title="Edit your DJ: look, outfit and name">
+              {character.djName}
+            </button>
+          )}
           <CareerChip onOpen={() => setLessonsOpen(true)} />
           {suspended && (
             <button className="tiny warn" onClick={() => engine.resume()}>
@@ -566,7 +575,8 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
       )}
       <TipLayer />
       {lessonsOpen && <LessonsModal onClose={() => setLessonsOpen(false)} />}
-      {askSetup && (gear === null ? <GearPicker /> : <Welcome />)}
+      {askSetup && (character === null ? <CharacterBuilder /> : gear === null ? <GearPicker /> : <Welcome />)}
+      {characterOpen && character !== null && <CharacterBuilder onClose={() => setCharacterOpen(false)} />}
       {gearOpen && gear !== null && <GearPicker onClose={() => setGearOpen(false)} />}
       {(!club || mode === 'booth') && (
         <div className="small-screen">

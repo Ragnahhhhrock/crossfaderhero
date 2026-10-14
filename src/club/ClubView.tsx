@@ -3,6 +3,7 @@ import { engine } from '../audio/engine';
 import type { Mode } from '../room/Room';
 import type { Gear } from '../state/setup';
 import { track } from '../analytics/ga';
+import { useCharacter } from '../state/character';
 import { Club, type BoothView } from './Club';
 import { buildPanel } from './panel';
 import { loadSettings } from './settings';
@@ -78,6 +79,10 @@ export function ClubView({ mode, onModeChange, boothCentre, blockKeys, gear, des
   useEffect(() => {
     clubRef.current?.setGear(gear);
   }, [gear]);
+  const character = useCharacter((s) => s.character);
+  useEffect(() => {
+    clubRef.current?.setPlayer(character);
+  }, [character]);
   useEffect(() => {
     desk.current?.setOpen(deskOpen);
   }, [deskOpen]);

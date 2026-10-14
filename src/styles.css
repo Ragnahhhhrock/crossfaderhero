@@ -611,3 +611,43 @@ kbd { font: 12px var(--font-lcd); background: var(--surface-sunken); border: 1px
   .org-row { grid-template-columns: 22px minmax(0, 1fr) minmax(0, 0.8fr) 0 0 36px 40px; }
   .org-row .genre, .org-row .num:nth-of-type(4) { visibility: hidden; }
 }
+
+/* ---------- character builder ---------- */
+.modal.char-builder { width: min(1040px, 96vw); }
+.cb-body { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: var(--space-7); }
+.cb-stage { position: relative; display: flex; flex-direction: column; background: radial-gradient(ellipse at 50% 35%, var(--surface-raised), var(--surface-well) 70%); border: 1px solid var(--border); border-radius: var(--radius-panel); overflow: hidden; height: 470px; }
+.cb-preview { position: relative; flex: 1; min-height: 400px; cursor: grab; touch-action: none; }
+.cb-preview:active { cursor: grabbing; }
+.cb-preview canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.cb-preview-off { display: grid; place-items: center; color: var(--text-3); font-size: var(--type-small); }
+.cb-bill { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border); background: var(--surface-sunken); }
+.cb-bill strong { font-size: var(--type-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cb-bill span { font: var(--type-small) var(--font-lcd); color: var(--cue); white-space: nowrap; }
+.cb-panel { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+.cb-field { display: flex; flex-direction: column; gap: var(--space-3); }
+.cb-label { font-size: var(--type-small); font-weight: var(--weight-semibold); color: var(--text-2); }
+.cb-value { font-family: var(--font-lcd); font-weight: var(--weight-regular); color: var(--cue); margin-left: var(--space-3); }
+.cb-name { display: flex; gap: var(--space-4); }
+.cb-name input { flex: 1; min-width: 0; background: var(--surface-well); border: 1px solid var(--border-strong); border-radius: var(--radius-input); color: var(--text); font: var(--type-strong) var(--font-ui); font-weight: var(--weight-bold); padding: var(--space-4) var(--space-5); }
+.cb-name input:focus { outline: none; border-color: var(--cue); }
+.cb-tabs { display: flex; gap: var(--space-2); border-bottom: 1px solid var(--border); }
+.cb-tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: var(--space-3) var(--space-5); color: var(--text-3); font-weight: var(--weight-semibold); }
+.cb-tab:hover { color: var(--text); }
+.cb-tab.on { color: var(--text); border-bottom-color: var(--cue); }
+.cb-tabpanel { display: flex; flex-direction: column; gap: var(--space-6); min-height: 380px; }
+.cb-choices { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.cb-chip { background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-button); padding: var(--space-3) var(--space-5); font-size: var(--type-small); color: var(--text-2); }
+.cb-chip:hover { border-color: var(--text-3); color: var(--text); }
+.cb-chip.on { border-color: var(--cue); color: var(--text); box-shadow: 0 0 0 1px var(--cue); }
+.cb-swatches { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.cb-swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border-strong); padding: 0; }
+.cb-swatch:hover { transform: scale(1.1); }
+.cb-swatch.on { border-color: var(--surface-panel); box-shadow: 0 0 0 2px var(--cue); }
+.cb-field input[type='range'] { accent-color: var(--cue); width: 100%; }
+.cb-note { margin: 0; font-size: var(--type-small); color: var(--text-3); }
+.cb-actions { align-items: center; margin-top: var(--space-6); }
+.cb-spacer { flex: 1; }
+.cb-hint { font-size: var(--type-small); color: var(--text-3); }
+.dj-chip { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--weight-semibold); }
+@media (max-width: 760px) { .cb-body { grid-template-columns: 1fr; } .cb-stage { height: 320px; } .cb-preview { min-height: 0; } }
+@media (prefers-reduced-motion: reduce) { .cb-swatch:hover { transform: none; } }

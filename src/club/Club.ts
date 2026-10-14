@@ -15,6 +15,8 @@ import type { Gear } from '../state/setup';
 import type { DeckId } from '../types';
 import { CAPACITY, PALETTES, type CameraView, type ClubSettings } from './settings';
 import { crowdSlots, Figures, type Person } from './people';
+import { characterLook } from '../character/avatar';
+import type { Character } from '../character/options';
 import { musicStyle, type Music } from './music';
 import { LedWall } from './screen';
 import { Bar, BARTENDER_Z } from './bar';
@@ -181,6 +183,8 @@ export class Club {
   mode: ClubMode = 'room';
   /** You've been on the decks: the resident DJ has handed over and the crowd follows your music. */
   private takenOver = false;
+  /** Your DJ, from the character builder: takes the resident's place when you jump on. */
+  private player: Character | null = null;
   private orbitReturn: { pos: THREE.Vector3; target: THREE.Vector3 } | null = null;
   private viewCentre = 0.5;
   private boothCentre = 0.3;
@@ -497,6 +501,7 @@ export class Club {
     if (!this.takenOver) {
       this.takenOver = true;
       this.dj.group.visible = false;
+      this.dressPlayer();
     }
     this.orbitReturn = { pos: this.camera.position.clone(), target: this.controls.target.clone() };
     this.controls.enabled = false;
@@ -505,6 +510,21 @@ export class Club {
     this.moveCamera(pose.pos, pose.target);
     this.centreMove = { from: this.viewCentre, to: this.lookAround ? 0.5 : this.boothCentre };
     this.dj.group.visible = this.boothView === 'behind';
+  }
+
+  /** Your DJ's look and name. Shown once you've taken over the decks. */
+  setPlayer(c: Character | null): void {
+    this.player = c;
+    if (this.takenOver) this.dressPlayer();
+  }
+
+  private dressPlayer(): void {
+    const c = this.player;
+    this.wall.djName = c?.djName ?? '';
+    if (!c) return;
+    const { look, outfit, scale } = characterLook(c);
+    this.dj.restyle(0, look, outfit);
+    this.dj.people[0].scale = scale;
   }
 
   /** Hide or show the decks while you're on them: full-screen view of the room, or back over the gear. */
