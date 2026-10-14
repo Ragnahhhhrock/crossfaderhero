@@ -8,6 +8,7 @@ import { useToasts } from '../state/toasts';
 import { useWallet } from '../state/wallet';
 import type { Track } from '../types';
 import { ScanProgress } from '../ui/ScanProgress';
+import { useTurntable } from '../ui/hooks';
 import { Counter } from './Counter';
 import { Dig } from './Dig';
 import { money, BAG_LIMIT } from './pricing';
@@ -112,7 +113,7 @@ function Help({ onClose }: { onClose: () => void }) {
         </p>
         <ol>
           <li><strong>Dig:</strong> flip through a crate with the arrows or scroll. <kbd>P</kbd> picks a record up to listen to; <kbd>B</kbd> puts it in your bag.</li>
-          <li><strong>Listen:</strong> take records to the turntable on the left. Slide the vinyl out of its sleeve, put it on the platter, start the platter and lower the needle.</li>
+          <li><strong>Listen:</strong> take records to the turntable on the left. Slide the vinyl out of its sleeve, put it on the platter, start the platter and lower the needle. Step away and it keeps playing while you dig.</li>
           <li><strong>Buy:</strong> pay for your bag at the counter on the right. Bought records go in the “Record store finds” crate in your collection.</li>
         </ol>
         <p className="note">The shop is stocked from your own music folders, so nothing leaves your computer. Prices are pocket money for the game: you start with {money(150)}.</p>
@@ -120,6 +121,20 @@ function Help({ onClose }: { onClose: () => void }) {
           <button className="primary" onClick={onClose} autoFocus>Got it</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** What's still spinning on the shop turntable while you wander around. */
+function NowPlaying({ byKey }: { byKey: Map<string, Track> }) {
+  const deck = useTurntable('A');
+  if (!deck.track || !(deck.needleDown && deck.motor)) return null;
+  const t = byKey.get(deck.track.key) ?? deck.track;
+  return (
+    <div className="store-nowplaying" role="status">
+      <span className="store-nowplaying-dot" aria-hidden />
+      <span>On the shop turntable: <strong>{t.meta.title}</strong>{t.meta.artist ? ` — ${t.meta.artist}` : ''}</span>
+      <button className="tiny" onClick={stopPlatter}>Stop</button>
     </div>
   );
 }
@@ -138,6 +153,7 @@ export default function StoreView() {
       return true;
     }
   });
+  const speakers = useRef<{ gain: GainNode; pan: StereoPannerNode } | null>(null);
   const [bagOpen, setBagOpen] = useState(false);
   const [suspended, setSuspended] = useState(false);
   const cash = useWallet((s) => s.cash);
@@ -156,10 +172,8 @@ export default function StoreView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
 
-  const setView = (v: View) => {
-    if (v.kind !== 'station') stopPlatter();
-    setViewState(v);
-  };
+  // the record keeps spinning when you step away from the station and wander the shop
+  const setView = (v: View) => setViewState(v);
   const viewRef = useRef(view);
   viewRef.current = view;
 
@@ -170,9 +184,14 @@ export default function StoreView() {
     void useLibrary.getState().init();
     ga('store_open');
     // the shop's turntable plays straight to the speakers, not through the mixer
+    // via the shop speakers, which get quieter and pan as you walk away from the station
     const t = engine.turntables.A;
+    const gain = engine.ctx.createGain();
+    const pan = engine.ctx.createStereoPanner();
     t.output.disconnect();
-    t.output.connect(engine.ctx.destination);
+    t.output.connect(gain).connect(pan).connect(engine.ctx.destination);
+    speakers.current = { gain, pan };
+    store.current?.setSpeakers(speakers.current);
     t.warmUp();
     const unlock = () => engine.resume();
     window.addEventListener('pointerdown', unlock);
@@ -200,6 +219,7 @@ export default function StoreView() {
       return;
     }
     store.current = s;
+    if (speakers.current) s.setSpeakers(speakers.current);
     (globalThis as unknown as { store: Store }).store = s;
     return () => {
       s.dispose();
@@ -277,6 +297,7 @@ export default function StoreView() {
           <Prompt target={focus} />
           <div className="room-hints"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span><span>drag to look</span><span><kbd>E</kbd> use</span></div>
           <Stocking shopEmpty={pool.length === 0} />
+          <NowPlaying byKey={byKey} />
         </>
       )}
 

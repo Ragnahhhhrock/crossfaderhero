@@ -1,3 +1,5 @@
+import { engine } from '../audio/engine';
+import { stopPlatter } from './Station';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from '../state/toasts';
 import { useWallet } from '../state/wallet';
@@ -61,7 +63,14 @@ export function Dig({ bin, byKey, onClose }: Props) {
   };
   const toggleHand = () => {
     if (!t) return;
-    if (inHand) return useShop.getState().putBack(t.key);
+    if (inHand) {
+      // it can't be back in the bin and still on the turntable
+      if (engine.turntables.A.track?.key === t.key) {
+        stopPlatter();
+        engine.turntables.A.eject();
+      }
+      return useShop.getState().putBack(t.key);
+    }
     const r = useShop.getState().pickUp(t.key);
     if (r === 'full') toast(`Your hands are full (${HAND_LIMIT} records). Put one back first.`, 'warn');
     else ga('store_pickup');

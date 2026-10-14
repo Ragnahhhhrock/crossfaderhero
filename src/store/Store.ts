@@ -175,6 +175,7 @@ export class Store {
   private walk: Pose = { ...START };
   private cur: Pose = { ...START };
   private view: StoreViewMode = 'walk';
+  private speakers: { gain: GainNode; pan: StereoPannerNode } | null = null;
   private blocked = false;
   private keys = new Set<string>();
   private focus: StoreTarget | null = null;
@@ -208,6 +209,11 @@ export class Store {
   }
 
   // ------------------------------------------------------------------ API
+  /** The shop speakers by the listening station: their level and pan follow where you stand. */
+  setSpeakers(s: { gain: GainNode; pan: StereoPannerNode } | null) {
+    this.speakers = s;
+  }
+
   setView(v: StoreViewMode) {
     if (v === this.view) return;
     this.view = v;
@@ -648,6 +654,7 @@ export class Store {
     const t = ms / 1000;
     this.clerk.update(0, 0.5, t, 100);
     this.turntable.update(engine.turntables.A, ms);
+    this.mixSpeakers();
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -696,6 +703,23 @@ export class Store {
     consider({ kind: 'station' }, Math.hypot(x - STATION.x, z - STATION.z) - 0.5, 1.45);
     consider({ kind: 'counter' }, Math.hypot(Math.max(Math.abs(x - COUNTER.x) - COUNTER_SIZE.w / 2, 0), z - COUNTER.z - COUNTER_SIZE.d / 2), 1.5);
     this.setFocus(best);
+  }
+
+  /** Quieter the further you wander from the station (never silent), panned to where it is. */
+  private mixSpeakers() {
+    const sp = this.speakers;
+    if (!sp) return;
+    const c = this.cur;
+    const dx = STATION.x - c.x;
+    const dz = STATION.z - c.z;
+    const d = Math.hypot(dx, dz);
+    const level = d < 1.2 ? 1 : Math.max(0.22, 1 / (1 + (d - 1.2) * 0.45));
+    // angle of the station relative to where you're facing (forward is −z rotated by yaw)
+    const rel = Math.atan2(-dx, -dz) - c.yaw;
+    const pan = d < 1.2 ? 0 : -Math.sin(rel) * Math.min(1, (d - 1.2) / 2) * 0.7;
+    const now = engine.ctx.currentTime;
+    sp.gain.gain.setTargetAtTime(level, now, 0.08);
+    sp.pan.pan.setTargetAtTime(pan, now, 0.08);
   }
 
   private applyCamera() {

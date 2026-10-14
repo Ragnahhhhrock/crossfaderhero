@@ -90,10 +90,8 @@ export function Station({ byKey, onClose }: { byKey: Map<string, Track>; onClose
     if (!deck.needleDown) deck.dropNeedle(deck.armOnRecord ? undefined : 0);
   };
   const stop = () => stopPlatter();
-  const close = () => {
-    stopPlatter();
-    onClose();
-  };
+  // stepping away leaves the record playing
+  const close = () => onClose();
   const closeRef = useRef(close);
   closeRef.current = close;
 

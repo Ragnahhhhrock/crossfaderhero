@@ -136,3 +136,30 @@
 @media (prefers-reduced-motion: reduce) {
   .store-flip-sleeve, .store-vinyl { transition: none; }
 }
+
+/* the record still spinning on the shop turntable while you walk around */
+.store-nowplaying {
+  position: absolute;
+  right: var(--space-7);
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 460px;
+  padding: 8px 10px 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-chrome);
+  border: 1px solid var(--hairline);
+  font-size: 13px;
+  z-index: 5;
+}
+.store-nowplaying span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-nowplaying-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--deck-a);
+  animation: store-np-pulse 1.2s ease-in-out infinite;
+}
+@keyframes store-np-pulse { 50% { opacity: 0.35; } }
