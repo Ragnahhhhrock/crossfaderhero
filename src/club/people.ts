@@ -3,7 +3,7 @@ import { hex } from '../design/tokens';
 import { MUSICS, type Music } from './music';
 
 /** How a figure moves. The crowd's own style flavours whatever the music asks for. */
-export type Style = 'bounce' | 'pump' | 'handsUp' | 'sway' | 'dancer' | 'dj' | 'bartender';
+export type Style = 'bounce' | 'pump' | 'handsUp' | 'sway' | 'dancer' | 'dj' | 'bartender' | 'clerk';
 
 export interface Person {
   x: number;
@@ -358,7 +358,7 @@ export class Figures {
     if (kind === 'staff')
       this.outfits = people.map(() => ({
         top: 'print-ink', topW: 1, sleeves: 'short', legs: 'print-ink', shorts: false, baggy: false,
-        shoes: 'print-ink', hat: 'none', hatC: 'print-ink', shades: false,
+        shoes: 'print-ink', hat: people[0]?.style === 'clerk' ? 'beanie' : 'none', hatC: 'print-plum', shades: false,
       }));
     people.forEach((_, i) => this.paint(i));
   }
@@ -608,6 +608,21 @@ function poseFor(p: Person, L: Look, music: Music, beats: number, energy: number
       pose.lean = 0.22;
       arms(pose, [1.25 + 0.08 * Math.sin(w * 2), 0.15 + 0.25 * Math.sin(w)], [0.3, 0.1]);
     }
+    return pose;
+  }
+
+  if (p.style === 'clerk') {
+    // behind the till: a slow nod to the shop's tunes, now and then scanning a sleeve or bagging a record
+    const cycle = (time + p.r * 20) % 16;
+    pose.nod = 0.05 * Math.sin(time * 1.3 + p.r * 5);
+    pose.roll = 0.025 * Math.sin(time * 0.6);
+    pose.lean = 0.06;
+    if (cycle < 3.5) arms(pose, [1.15 + 0.05 * Math.sin(time * 3), 0.1], [0.95, 0.12]);
+    else if (cycle < 6) {
+      pose.lean = 0.12;
+      pose.nod = 0.12;
+      arms(pose, [1.3 + 0.1 * Math.sin(time * 2), 0.14], [1.2 + 0.06 * Math.sin(time * 2.4), 0.1]);
+    } else arms(pose, [0.2, 0.1], [0.45 + 0.05 * Math.sin(time * 0.8), 0.15]);
     return pose;
   }
 

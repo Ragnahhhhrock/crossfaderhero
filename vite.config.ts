@@ -7,7 +7,7 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
-    rollupOptions: { input: { main: 'index.html', brand: 'brand.html', club: 'club.html' } },
+    rollupOptions: { input: { main: 'index.html', brand: 'brand.html', club: 'club.html', store: 'store.html' } },
   },
   test: { environment: 'node', include: ['test/**/*.test.ts'] },
 } as never);

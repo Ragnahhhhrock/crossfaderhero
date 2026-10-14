@@ -1,0 +1,138 @@
+/* The record store: full-bleed 3D shop with panels for digging, listening and paying.
+   Every value comes from src/design/tokens.css. */
+.store-view { position: relative; height: 100vh; overflow: hidden; }
+.store-stage { position: absolute; inset: 0; }
+.store-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.store-stage canvas:active { cursor: grabbing; }
+.store-view .topbar { background: linear-gradient(var(--glass-strong), var(--shade-40) 70%, transparent); }
+.store-view .brand { gap: var(--space-4); }
+.store-view .venue-switch { margin-left: var(--space-1); }
+
+.store-sub { color: var(--text-3); font-size: var(--type-small); }
+.store-sub.short, .store-total strong.short { color: var(--cue); }
+.store-chip { display: inline-block; font: 12px var(--font-lcd); color: var(--text-2); background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-chip); padding: 2px var(--space-3); white-space: nowrap; }
+.store-chip.cash { color: var(--play); border-color: color-mix(in srgb, var(--play) 50%, var(--border)); font-size: 14px; }
+.store-chip.bag { color: var(--hot-teal); }
+.store-blank { display: block; aspect-ratio: 1; background: linear-gradient(135deg, var(--surface-raised), var(--surface-sunken)); border-radius: 2px; }
+
+/* ---------- status / empty ---------- */
+.store-status { position: absolute; left: var(--space-7); top: 58px; display: flex; gap: var(--space-4); align-items: center; z-index: 3; }
+.store-empty {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4;
+  width: min(520px, 90vw); padding: 22px 26px;
+  background: var(--glass-strong); border: 1px solid var(--border-strong); border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-modal); backdrop-filter: blur(10px);
+}
+.store-empty h2 { margin: 0 0 var(--space-4); }
+.store-empty p { color: var(--text-2); }
+.store-empty .row { display: flex; gap: var(--space-4); margin-top: var(--space-5); }
+.store-empty .note { color: var(--text-3); font-size: var(--type-small); }
+
+/* ---------- bag popover ---------- */
+.store-bagpop {
+  position: absolute; top: 52px; right: var(--space-7); z-index: 6; width: min(360px, 90vw);
+  background: var(--glass-strong); border: 1px solid var(--border-strong); border-radius: var(--radius-panel);
+  padding: var(--space-5) var(--space-6); box-shadow: var(--shadow-pop); backdrop-filter: blur(10px);
+}
+.store-bagpop h3 { margin: 0 0 var(--space-3); font-size: var(--type-strong); }
+.store-bagpop ul { list-style: none; margin: 0 0 var(--space-4); padding: 0; display: grid; gap: var(--space-2); max-height: 40vh; overflow: auto; }
+.store-bagpop li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); font-size: var(--type-small); }
+.store-bagpop li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- digging ---------- */
+.store-dig {
+  position: absolute; inset: 46px 0 0 0; z-index: 5;
+  display: flex; flex-direction: column; align-items: center;
+  background: radial-gradient(ellipse at 50% 45%, var(--shade-40), var(--shade-80) 75%);
+  backdrop-filter: blur(3px);
+  padding: var(--space-6) var(--space-7) var(--space-5);
+}
+.store-dig-head { width: min(1000px, 100%); display: flex; justify-content: space-between; align-items: flex-start; }
+.store-dig-head h2 { margin: 0; font-size: var(--type-heading); }
+.store-letters { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin: var(--space-4) 0 0; max-width: 900px; }
+.store-letters button {
+  min-width: 28px; padding: 2px var(--space-3); font: var(--weight-semibold) 13px var(--font-lcd);
+  background: var(--surface-control); border: 1px solid var(--border); border-radius: var(--radius-chip); color: var(--text-2);
+}
+.store-letters button:hover { color: var(--text); border-color: var(--text-3); }
+.store-letters button.on { background: var(--cue); border-color: var(--cue); color: var(--text-on-signal); }
+
+.store-flip { position: relative; flex: 1; min-height: 260px; width: min(1000px, 100%); perspective: 1100px; perspective-origin: 50% 40%; display: grid; place-items: center; }
+.store-flip-sleeve {
+  position: absolute; width: min(300px, 34vh); aspect-ratio: 1; padding: 0; border: 0; background: none;
+  transition: transform 0.2s var(--ease-out), opacity 0.2s;
+  filter: drop-shadow(0 8px 14px var(--shade-80));
+}
+.store-flip-sleeve img, .store-flip-sleeve .store-blank { width: 100%; height: 100%; display: block; border-radius: 2px; object-fit: cover; }
+.store-flip-sleeve.front { width: min(360px, 42vh); cursor: default; }
+.store-sticker {
+  position: absolute; right: -10px; bottom: 14px; transform: rotate(-4deg);
+  background: var(--print-sun); color: var(--print-ink); font: var(--weight-bold) 16px var(--font-lcd);
+  padding: 3px var(--space-4); border-radius: 2px; box-shadow: 0 2px 6px var(--shade-65);
+}
+
+.store-detail {
+  width: min(1000px, 100%); display: grid; grid-template-columns: 1fr auto; gap: var(--space-3) var(--space-7); align-items: center;
+  background: var(--glass-strong); border: 1px solid var(--border); border-radius: var(--radius-panel); padding: var(--space-5) var(--space-7);
+}
+.store-detail-meta { display: grid; gap: 2px; min-width: 0; }
+.store-detail-meta strong { font-size: var(--type-heading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-detail-meta > span:nth-child(2) { color: var(--text-2); }
+.store-rare { margin-left: var(--space-4); font-style: normal; color: var(--print-gold); border: 1px solid var(--print-gold); border-radius: var(--radius-chip); padding: 0 var(--space-3); }
+.store-detail-actions { display: flex; gap: var(--space-4); align-items: center; }
+.store-pos { grid-column: 1 / -1; display: flex; gap: var(--space-5); align-items: center; font: 12px var(--font-lcd); color: var(--text-3); }
+.store-pos input { flex: 1; accent-color: var(--cue); }
+.store-keys { margin: var(--space-4) 0 0; color: var(--text-3); font-size: var(--type-small); text-align: center; }
+
+/* ---------- station + counter panels ---------- */
+.store-station, .store-counter {
+  position: absolute; left: var(--space-6); right: var(--space-6); bottom: var(--space-6); z-index: 5;
+  background: var(--glass-strong); border: 1px solid var(--border-strong); border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel), var(--shadow-pop); backdrop-filter: blur(10px);
+  padding: var(--space-5) var(--space-7) var(--space-6);
+}
+.store-station-head { display: flex; align-items: baseline; gap: var(--space-6); margin-bottom: var(--space-4); }
+.store-station-head h2 { margin: 0; font-size: var(--type-heading); }
+.store-station-head .tiny { margin-left: auto; align-self: center; }
+.store-station-body { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(260px, auto) minmax(300px, 1.2fr); gap: var(--space-7); align-items: center; }
+.store-hand { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+.store-hand-rec { position: relative; width: 84px; padding: 0; border: 2px solid transparent; border-radius: 3px; background: none; }
+.store-hand-rec.on { border-color: var(--cue); }
+.store-hand-rec img, .store-hand-rec .store-blank { width: 100%; display: block; }
+.store-hand-rec .store-chip { position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; text-align: center; border-radius: 0; background: var(--shade-80); padding: 1px 0; }
+.store-rec { display: flex; gap: var(--space-6); align-items: center; }
+.store-rec-meta { display: grid; gap: 2px; max-width: 200px; }
+.store-rec-meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-sleeve-wrap { position: relative; width: 150px; height: 150px; flex: none; margin-right: 92px; }
+.store-sleeve-front, .store-sleeve-wrap > .store-blank { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; box-shadow: 0 4px 12px var(--shade-65); }
+.store-vinyl { position: absolute; top: 4px; left: 4px; width: 142px; height: 142px; transition: transform 0.55s var(--ease-out); }
+.store-sleeve-wrap.out .store-vinyl { transform: translateX(86px); }
+.store-sleeve-wrap:not(.out) .store-vinyl { z-index: 0; }
+.store-sleeve-front { z-index: 1; }
+.store-sleeve-wrap.out .store-sleeve-front { z-index: 1; }
+.store-sleeve-wrap.out .store-vinyl { z-index: 2; }
+.store-controls { display: grid; gap: var(--space-4); justify-items: start; }
+.store-transport { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; }
+.store-rpm { display: inline-flex; gap: var(--space-1); }
+.store-seek { width: 100%; accent-color: var(--cue); }
+.store-back { opacity: 0.8; }
+
+.store-counter-body { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(360px, 1.6fr); gap: var(--space-7); align-items: start; }
+.store-clerk { margin: 0; padding: var(--space-5) var(--space-6); background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-panel); }
+.store-clerk p { margin: var(--space-2) 0 0; font-size: 17px; }
+.store-bag h3, .store-receipt h3 { margin: 0 0 var(--space-3); font-size: var(--type-strong); display: flex; gap: var(--space-4); align-items: baseline; }
+.store-bag ul, .store-receipt ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); max-height: 26vh; overflow: auto; }
+.store-bag li { display: grid; grid-template-columns: 40px 1fr auto auto; gap: var(--space-4); align-items: center; }
+.store-receipt li { display: flex; justify-content: space-between; gap: var(--space-5); font: 14px var(--font-lcd); }
+.store-thumb { width: 40px; height: 40px; object-fit: cover; }
+.store-li-name { display: grid; min-width: 0; }
+.store-li-name strong, .store-li-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-total { display: flex; justify-content: space-between; align-items: baseline; margin: var(--space-4) 0; font-size: var(--type-strong); }
+.store-total strong { font: var(--weight-bold) 20px var(--font-lcd); }
+
+@media (max-width: 1100px) {
+  .store-station-body, .store-counter-body { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .store-flip-sleeve, .store-vinyl { transition: none; }
+}

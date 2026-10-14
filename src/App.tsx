@@ -450,6 +450,9 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
           <a className="venue-switch" href={club ? '/' : '/club'} title={club ? 'Back to your bedroom' : 'Play the club'}>
             {club ? 'Bedroom' : 'The club'}
           </a>
+          <a className="venue-switch" href="/store" title="Go crate digging at the record store">
+            Record store
+          </a>
         </div>
         <div className="topbar-right">
           <CareerChip onOpen={() => setLessonsOpen(true)} />

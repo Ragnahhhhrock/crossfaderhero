@@ -29,6 +29,16 @@ export interface SlotState {
 
 export const SLOTS: SlotId[] = ['A', 'B', 'crate'];
 
+let backgroundAnalysis = true;
+/**
+ * The decks analyse every track in the background so BPM and key are ready.
+ * Places that only browse (the record store) turn that off; a track is still
+ * analysed on demand when it's put on a deck.
+ */
+export function setBackgroundAnalysis(on: boolean) {
+  backgroundAnalysis = on;
+}
+
 interface LibraryState {
   /** USB sticks A and B for the CDJs, and the record crates for the turntables. */
   slots: Record<SlotId, SlotState>;
@@ -147,7 +157,7 @@ export const useLibrary = create<LibraryState>((setState, getState) => {
   // ---- background analysis queue (one track at a time) ----
   let pumping = false;
   async function pumpQueue() {
-    if (pumping) return;
+    if (pumping || !backgroundAnalysis) return;
     pumping = true;
     try {
       for (;;) {

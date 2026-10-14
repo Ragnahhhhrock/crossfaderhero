@@ -18,6 +18,10 @@ You start in a small bedroom: a desk against the wall with two media players, a 
 - Sound comes out of the two speakers as positioned sources, so it changes as you walk around the room.
 - Add `?no3d` to the URL to skip the room and go straight to the decks.
 
+## The record store (3D shop)
+
+**https://crossfaderhero.com/store** — go crate digging. A shop with bins of vinyl filed by genre and alphabetically by artist, stocked from your own music folders. Flip through a crate, pick records up, try them on the listening station (slide the vinyl out of its sleeve, put it on the platter, drop the needle), add the ones you want to your record bag and pay the clerk at the counter. Bought records land in a "Record store finds" crate in your collection. Details and what's next: [docs/RECORD-STORE.md](docs/RECORD-STORE.md). Code: `src/store/`. **Record store** in the top bar of the bedroom and the club gets you there.
+
 ## The club (3D venue)
 
 **https://crossfaderhero.com/club** — the first venue: a nightclub with a stage, DJ booth (the same CDJs and mixer as your bedroom), a 9 × 7 m LED dance floor that holds 50, PA stacks, a bar, and a lighting rig on three trusses. Everything runs to a beat clock and every element is on the control desk (side panel on desktop, bottom sheet on phones):
