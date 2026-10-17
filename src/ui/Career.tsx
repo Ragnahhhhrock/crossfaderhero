@@ -53,6 +53,9 @@ export function Welcome() {
             I know my way around
           </button>
         </div>
+        <p className="note">
+          Another <a href="https://malgordon.com/">Mal Gordon</a> creation
+        </p>
       </div>
     </div>
   );

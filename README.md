@@ -127,3 +127,7 @@ src/
   ui/         deck, mixer, browser, waveforms, knobs and faders
 test/         vitest unit tests with synthetic audio
 ```
+
+---
+
+Another <a href="https://malgordon.com/">Mal Gordon</a> creation
