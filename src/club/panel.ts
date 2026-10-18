@@ -7,6 +7,7 @@ import {
   saveSettings,
   type CameraView,
   type ClubSettings,
+  type ExtraScreens,
   type LaserColour,
   type LaserPattern,
   type LightMode,
@@ -246,10 +247,16 @@ export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings)
       ['plasma', 'Plasma'],
       ['grid', 'Retro grid'],
       ['logo', 'Club CFH'],
+      ['name', 'DJ name'],
     ],
     3,
   );
   slider(screen, 'Speed', 'screenSpeed', 0, 1, 0.05, (v) => `${Math.round(v * 100)}%`);
+  toggleRow(screen, 'Side screens', 'extraScreens');
+  segmented<ExtraScreens>(screen, 'Side screens show', 'extraMode', [
+    ['mix', 'Their own'],
+    ['follow', 'Same as main'],
+  ]);
 
   const room = section('Venue');
   toggleRow(room, 'LED dance floor', 'floorLeds');

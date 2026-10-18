@@ -4,7 +4,9 @@ export type LightMode = 'wash' | 'chase' | 'pulse' | 'movers';
 export type Palette = 'club' | 'sunset' | 'ice' | 'jungle' | 'rainbow';
 export type LaserColour = 'green' | 'red' | 'blue' | 'rgb';
 export type LaserPattern = 'fan' | 'sweep' | 'tunnel';
-export type ScreenMode = 'tunnel' | 'spectrum' | 'kaleido' | 'plasma' | 'grid' | 'logo';
+export type ScreenMode = 'tunnel' | 'spectrum' | 'kaleido' | 'plasma' | 'grid' | 'logo' | 'name';
+/** What the extra screens round the room show: their own visuals, or the main screen's. */
+export type ExtraScreens = 'mix' | 'follow';
 export type StrobeRate = 1 | 2 | 4;
 export type CameraView = 'floor' | 'booth' | 'balcony' | 'side';
 
@@ -28,6 +30,9 @@ export interface ClubSettings {
   screen: boolean;
   screenMode: ScreenMode;
   screenSpeed: number;
+  /** The screens on the side walls and over the bar. */
+  extraScreens: boolean;
+  extraMode: ExtraScreens;
   dancers: boolean;
   floorLeds: boolean;
   houseLights: boolean;
@@ -57,6 +62,8 @@ export const DEFAULTS: ClubSettings = {
   screen: true,
   screenMode: 'tunnel',
   screenSpeed: 0.6,
+  extraScreens: true,
+  extraMode: 'mix',
   dancers: true,
   floorLeds: true,
   houseLights: false,

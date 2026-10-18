@@ -122,6 +122,7 @@ Plain, warm, knowing. Talk like a DJ mate showing you the ropes, not like softwa
 - **Type:** hand-bent single-stroke capitals, not a typeface. CLUB and CFH are the one place all caps is correct. Never set the name in Chakra Petch.
 - **Clear space:** the height of the CLUB letters on every side.
 - **Where it lives:** neon signs on both side walls of the club and the ring mark on the front of the DJ booth; the LED wall's Club CFH visual (the cap swings with the beat); a corner bug on every other visual, and the full sign on the wall for one bar in every eight.
+- **The DJ's name** on the club's screens is set in the same neon: upper-cased, bold Chakra Petch letters in `--cfh-pink` and `--cfh-cyan` with a `--cfh-core` hot centre, and the crossfader slot underneath. Four looks (drop, neon, split, wave), eight beats each; they stay inside the Club CFH palette, and the beat only ever drives position, scale and brightness, never new colours.
 - **Where it doesn't:** the app's controls and bars. Neon is venue light, not state.
 - **Don't:** recolour the tubes, add outlines or drop shadows, rotate or italicise the letters, or put the lock-up on a photo or a light background.
 

@@ -13,7 +13,7 @@ import { peakDb } from '../audio/mixer';
 import { beatAt } from '../audio/grid';
 import type { Gear } from '../state/setup';
 import type { DeckId } from '../types';
-import { CAPACITY, PALETTES, type CameraView, type ClubSettings } from './settings';
+import { CAPACITY, PALETTES, type CameraView, type ClubSettings, type ScreenMode } from './settings';
 import { crowdSlots, Figures, type Person } from './people';
 import { characterLook } from '../character/avatar';
 import type { Character } from '../character/options';
@@ -45,6 +45,15 @@ const LOOK = { yaw: 1.75, up: 0.75, down: 0.85 }; // how far you can turn your h
 const ORBIT = { yaw: 2.6, lo: 0.08, hi: 1.25, near: 1.6, far: 7 };
 /** Behind view to start with: over the DJ's right shoulder, the decks and the crowd both in shot. */
 const ORBIT_HOME = { yaw: -0.55, pitch: 0.32, dist: 3.2 };
+
+/** The screens round the room, besides the big wall: what each can show, and where it starts in the cycle. */
+interface ExtraScreen {
+  wall: LedWall;
+  modes: ScreenMode[];
+  offset: number;
+}
+const SIDE_MODES: ScreenMode[] = ['spectrum', 'name', 'kaleido', 'plasma', 'grid', 'tunnel', 'logo'];
+const STRIP_MODES: ScreenMode[] = ['spectrum', 'name', 'plasma', 'logo', 'tunnel'];
 
 /** What the club's clock is following right now. */
 export interface ClubClock {
@@ -175,6 +184,10 @@ export class Club {
   private bar!: Bar;
   /** The Club CFH neon: one on each side wall, the ring mark on the booth. */
   private cfhSigns: CfhSign[] = [];
+  /** The side-wall screens and the strip over the bar. */
+  private extras: ExtraScreen[] = [];
+  private extrasLit = true;
+  private frameCount = 0;
 
   private boothGear = new THREE.Group();
   private cdjModels: { A: CdjModel; B: CdjModel } | null = null;
@@ -372,6 +385,7 @@ export class Club {
       this.scene.add(sign.group);
       this.cfhSigns.push(sign);
     }
+    this.buildExtraScreens();
 
     // house lights: plain white downlights for setting up
     for (const x of [-4, 0, 4])
@@ -398,6 +412,34 @@ export class Club {
     this.scene.add(this.strobeLight);
     this.screenLight.position.set(0, 3.2, -7.2);
     this.scene.add(this.screenLight);
+  }
+
+  /** Two LED screens on each side wall and a wide strip over the bar, each its own canvas. */
+  private buildExtraScreens(): void {
+    const frameMat = this.std('black', 0.5, 0.3);
+    const add = (w: number, h: number, px: number, py: number, pz: number, rotY: number, px2: number, modes: ScreenMode[], offset: number) => {
+      const wall = new LedWall(px2, Math.round((px2 * h) / w));
+      wall.chrome = false;
+      const g = new THREE.Group();
+      g.position.set(px, py, pz);
+      g.rotation.y = rotY;
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.06), frameMat);
+      frame.position.z = -0.035;
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: wall.texture, toneMapped: false }));
+      face.position.z = 0.002;
+      g.add(frame, face);
+      this.scene.add(g);
+      this.extras.push({ wall, modes, offset });
+    };
+    // side walls: two 16:9 screens each, down the dance floor, in front of the acoustic panels
+    let n = 0;
+    for (const side of [-1, 1])
+      for (const z of [-3, 2]) {
+        add(3, 1.69, side * (V.w / 2 - 0.16), 2.45, z, -side * (Math.PI / 2), 448, SIDE_MODES, n * 2);
+        n++;
+      }
+    // over the bar, facing the dance floor
+    add(5.6, 1.0, 0, 5.1, V.d / 2 - 0.12, Math.PI, 640, STRIP_MODES, 0);
   }
 
   private buildStage(): void {
@@ -532,12 +574,14 @@ export class Club {
   /** Your DJ's look and name. Shown once you've taken over the decks. */
   setPlayer(c: Character | null): void {
     this.player = c;
+    // the screens bill the DJ's name whether or not you're on the decks
+    this.wall.djName = c?.djName ?? '';
+    for (const e of this.extras) e.wall.djName = this.wall.djName;
     if (this.takenOver) this.dressPlayer();
   }
 
   private dressPlayer(): void {
     const c = this.player;
-    this.wall.djName = c?.djName ?? '';
     if (!c) return;
     const { look, outfit, scale } = characterLook(c);
     this.dj.restyle(0, look, outfit);
@@ -1178,6 +1222,21 @@ export class Club {
     } else {
       this.wall.off();
       this.screenLight.intensity = 0;
+    }
+    // the screens round the room: each shows its own visual (stepping on every four bars,
+    // staggered), or the main screen's; drawn on alternate frames to keep the cost down
+    this.frameCount++;
+    if (s.screen && s.extraScreens) {
+      this.extrasLit = true;
+      const step = Math.floor(beats / 16);
+      this.extras.forEach((e, i) => {
+        if ((this.frameCount + i) % 2) return;
+        const mode = s.extraMode === 'follow' ? s.screenMode : e.modes[(step + e.offset) % e.modes.length];
+        e.wall.draw(mode, beats, time, s.screenSpeed, hueNow, energy);
+      });
+    } else if (this.extrasLit) {
+      this.extrasLit = false;
+      for (const e of this.extras) e.wall.off();
     }
 
     // ---- LED dance floor
