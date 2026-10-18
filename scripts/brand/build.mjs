@@ -2,6 +2,7 @@
  * Builds every brand asset from src/design/tokens.css:
  *   public/favicon.svg, public/mark.svg          (vector, palette colours inlined)
  *   public/avatar.svg                            (the DJ avatar, scripts/brand/avatar.mjs)
+ *   public/club-cfh.svg, club-cfh-mark.svg       (the Club CFH neon logo, scripts/brand/club.mjs)
  *   public/apple-touch-icon.png, icon-192.png, icon-512.png, icon-maskable-512.png
  *   public/og-image.png (1200×630), public/twitter-card.png (1200×600)
  * The social images are a real render of the 3D bedroom (?shot) under the
@@ -15,6 +16,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { avatarSvg } from './avatar.mjs';
+import { clubSvgs } from './club.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const pub = join(root, 'public');
@@ -36,6 +38,10 @@ writeFileSync(join(pub, 'mark.svg'), mark(false));
 console.log('wrote favicon.svg, mark.svg');
 writeFileSync(join(pub, 'avatar.svg'), avatarSvg(t));
 console.log('wrote avatar.svg');
+for (const [name, svg] of Object.entries(clubSvgs(t))) {
+  writeFileSync(join(pub, name), svg);
+  console.log('wrote', name);
+}
 
 // ---- serve the built app ----
 const dist = join(root, 'dist');

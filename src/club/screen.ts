@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { font, hue, token } from '../design/tokens';
+import { drawCfh, logoSize } from './neon';
 import type { ScreenMode } from './settings';
 
 /**
@@ -70,6 +71,7 @@ export class LedWall {
         break;
     }
     ctx.restore();
+    if (mode !== 'logo') this.station(beats, kick);
     // LED pixel grid over everything
     ctx.fillStyle = token('black');
     ctx.globalAlpha = 0.28;
@@ -232,34 +234,57 @@ export class LedWall {
     void beats;
   }
 
+  /**
+   * Club CFH on top of every visual: a small neon sign in the corner all night, and
+   * once every eight bars (the last bar of the phrase) the full sign takes the wall.
+   */
+  private station(beats: number, kick: number): void {
+    const { ctx, w, h } = this;
+    const [lw] = logoSize('lockup');
+    const phrase = beats % 32;
+    const ident = phrase >= 28 ? Math.min(1, (phrase - 28) * 2, (32 - phrase) * 2) : 0;
+    if (ident > 0) {
+      ctx.fillStyle = token('black');
+      ctx.globalAlpha = 0.72 * ident;
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = 1;
+      const s = ((w * 0.6) / lw) * (0.94 + 0.06 * ident + 0.03 * kick);
+      drawCfh(ctx, 'lockup', w / 2, h / 2, s, { glow: 'layered', cap: 0.5 + 0.5 * Math.sin(beats * Math.PI * 0.5), lit: ident });
+    }
+    // the corner bug, on a dark plate so it reads over any visual
+    const s = 96 / lw;
+    const [, lh] = logoSize('lockup');
+    const bw = 96 + 16;
+    const bh = lh * s + 14;
+    const x = w - bw - 10;
+    const y = h - bh - 8;
+    ctx.fillStyle = token('black');
+    ctx.globalAlpha = 0.62;
+    ctx.beginPath();
+    ctx.roundRect(x, y, bw, bh, 8);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    drawCfh(ctx, 'lockup', x + bw / 2, y + bh / 2, s, { glow: 'layered', cap: 0.5 + 0.5 * Math.sin(beats * Math.PI * 0.5), lit: 0.9 + 0.1 * kick });
+  }
+
+  /** The logo screen: the Club CFH sign, its crossfader cap swinging with the beat, and who's playing. */
   private logo(t: number, beats: number, kick: number, h0: number): void {
     const { ctx, w, h } = this;
-    this.clear(0.4);
-    // the mark: deck A and B rings joined by a crossfader cap
-    const cx = w / 2;
-    const cy = h * 0.4;
-    const r = 46 + kick * 8;
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = token('deck-a');
-    ctx.beginPath();
-    ctx.arc(cx - r * 0.95, cy, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = token('deck-b');
-    ctx.beginPath();
-    ctx.arc(cx + r * 0.95, cy, r, 0, Math.PI * 2);
-    ctx.stroke();
-    const fx = cx + Math.sin(beats * Math.PI * 0.5) * r * 0.9;
-    ctx.fillStyle = token('ink-100');
-    ctx.fillRect(fx - 10, cy - 22, 20, 44);
+    void t;
+    void h0;
+    this.clear(0.5);
+    const [lw] = logoSize('lockup');
+    const s = ((w * 0.62) / lw) * (1 + 0.03 * kick);
+    drawCfh(ctx, 'lockup', w / 2, h * 0.43, s, { glow: 'layered', cap: 0.5 + 0.5 * Math.sin(beats * Math.PI * 0.5) });
     ctx.textAlign = 'center';
     ctx.fillStyle = token('ink-100');
     const bill = this.djName || 'Crossfader Hero';
-    let size = 46;
+    let size = 30;
     ctx.font = font('ui', size, 700);
-    while (size > 20 && ctx.measureText(bill).width > w * 0.9) ctx.font = font('ui', (size -= 2), 700);
-    ctx.fillText(bill, cx, h * 0.8);
-    ctx.font = font('lcd', 22);
-    ctx.fillStyle = hue(h0 + t * 0.05, 1, 0.65);
-    ctx.fillText('crossfaderhero.com', cx, h * 0.92);
+    while (size > 16 && ctx.measureText(bill).width > w * 0.9) ctx.font = font('ui', (size -= 2), 700);
+    ctx.fillText(bill, w / 2, h * 0.87);
+    ctx.font = font('lcd', 18);
+    ctx.fillStyle = token('cfh-cyan');
+    ctx.fillText('crossfaderhero.com', w / 2, h * 0.96);
   }
 }

@@ -20,6 +20,7 @@ import type { Character } from '../character/options';
 import { musicStyle, type Music } from './music';
 import { LedWall } from './screen';
 import { Bar, BARTENDER_Z } from './bar';
+import { CfhSign } from './cfhSign';
 
 // The venue, in metres. Stage at the north end (−z), bar at the south end.
 const V = { w: 14, d: 18, h: 6 };
@@ -172,6 +173,8 @@ export class Club {
   private wallMesh!: THREE.Mesh;
   private speakers: SpeakerModel[] = [];
   private bar!: Bar;
+  /** The Club CFH neon: one on each side wall, the ring mark on the booth. */
+  private cfhSigns: CfhSign[] = [];
 
   private boothGear = new THREE.Group();
   private cdjModels: { A: CdjModel; B: CdjModel } | null = null;
@@ -361,6 +364,15 @@ export class Club {
     // exit sign over the back door
     this.box(0.5, 0.18, 0.06, this.glow('play', 2), V.w / 2 - 1.2, 2.6, V.d / 2 - 0.05);
 
+    // Club CFH in neon, high on both side walls above the acoustic panels
+    for (const side of [-1, 1]) {
+      const sign = new CfhSign('lockup', 3.3, { light: 3, phase: side * 4.1 });
+      sign.group.position.set(side * (V.w / 2 - 0.05), 4.85, -1.5);
+      sign.group.rotation.y = -side * (Math.PI / 2);
+      this.scene.add(sign.group);
+      this.cfhSigns.push(sign);
+    }
+
     // house lights: plain white downlights for setting up
     for (const x of [-4, 0, 4])
       for (const z of [-6, -1, 4]) {
@@ -418,6 +430,11 @@ export class Club {
     this.ledStrips.push(facade);
     this.box(2.4, 0.06, 0.02, facade, 0, 0.75, 0.43, booth);
     this.box(2.4, 0.06, 0.02, facade, 0, 0.25, 0.43, booth);
+    // the ring mark in neon on the front of the booth, between the two light strips
+    const boothMark = new CfhSign('mark', 0.36, { phase: 2.3 });
+    boothMark.group.position.set(0, 0.5, 0.425);
+    booth.add(boothMark.group);
+    this.cfhSigns.push(boothMark);
     this.boothGear.position.set(0, 1.0, 0);
     this.boothGear.rotation.y = Math.PI; // the gear's front edge faces the DJ, behind the booth
     booth.add(this.boothGear);
@@ -1001,6 +1018,7 @@ export class Club {
     if (this.dj.group.visible) this.dj.update(beats, s.playing ? energy : 0.1, time, this.clock.bpm);
     this.staff.update(beats, 0.5, time, this.clock.bpm);
     this.bar.update(time);
+    for (const sign of this.cfhSigns) sign.update(time, kick);
 
     // the booth gear mirrors the decks once they're yours
     if (this.takenOver) {

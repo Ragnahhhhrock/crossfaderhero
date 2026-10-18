@@ -24,12 +24,12 @@ You start in a small bedroom: a desk against the wall with two media players, a 
 
 ## The club (3D venue)
 
-**https://crossfaderhero.com/club** — the first venue: a nightclub with a stage, DJ booth (the same CDJs and mixer as your bedroom), a 9 × 7 m LED dance floor that holds 50, PA stacks, a bar, and a lighting rig on three trusses. Everything runs to a beat clock and every element is on the control desk (side panel on desktop, bottom sheet on phones):
+**https://crossfaderhero.com/club** — the first venue: a nightclub with a stage, DJ booth (the same CDJs and mixer as your bedroom), a 9 × 7 m LED dance floor that holds 50, PA stacks, a bar, Club CFH neon signs on the side walls and the DJ booth, and a lighting rig on three trusses. Everything runs to a beat clock and every element is on the control desk (side panel on desktop, bottom sheet on phones):
 
 - **Crowd** slider (0–50, the floor fills from the front) and **podium dancers** on four lit podiums.
 - **Lighting**: wash, chase, pulse or moving heads; five colour palettes (Club, Sunset, Ice, Jungle, Rainbow); intensity.
 - **Scanners** (gobo dots thrown across the floor, speed), **strobes** (every beat, 8ths, 16ths; off by default), **lasers** (green, red, blue or RGB; fan, sweep or tunnel), **smoke** (density; beams show up more in haze).
-- **LED wall** behind the DJ: tunnel, spectrum, kaleidoscope, plasma, retro grid or the Crossfader Hero logo, with speed.
+- **LED wall** behind the DJ: tunnel, spectrum, kaleidoscope, plasma, retro grid or the Club CFH neon sign, with speed. A small Club CFH bug sits in the corner of every visual, and the full sign takes the wall for one bar in every eight.
 - **Drop**: a two-bar build then eight bars of everything; the crowd jumps. Plus tempo, LED floor and house-light toggles, all on / blackout / reset, camera views (floor, DJ booth, back, side), auto orbit and glow.
 - **Jump on the decks** (button, top bar or `E`): the resident DJ steps aside and you're behind the booth with the full decks, mixer, USB browser and record crates, looking over your gear at the crowd. Your gear choice (CDJs, turntables or both) is on the booth and mirrors the decks. `Esc` or **Onto the floor** steps back down; the music keeps playing out of the PA.
 - **The room follows your mix.** While a deck is on air, the lights, lasers, LED wall and dancers lock to that deck's beat grid and tempo (the light desk shows `BPM · deck A`). The crowd's energy follows the bass: they ease off in breakdowns, and when the bass slams back after two bars or more the club fires its drop. With nothing on air they stand and wait, and the lights run on the desk's own tempo.

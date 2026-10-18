@@ -245,7 +245,7 @@ export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings)
       ['kaleido', 'Kaleido'],
       ['plasma', 'Plasma'],
       ['grid', 'Retro grid'],
-      ['logo', 'Logo'],
+      ['logo', 'Club CFH'],
     ],
     3,
   );

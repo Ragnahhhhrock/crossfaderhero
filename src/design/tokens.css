@@ -157,6 +157,11 @@
   --club-burgundy: #5c1c2c;
   --club-camel: #b08a5a;
 
+  /* ---------- Club CFH identity: the venue's neon (never used in the app chrome) ---------- */
+  --cfh-pink: #ff2e88; /* the CFH tubes and the ring mark */
+  --cfh-cyan: #36e8ff; /* the border tube, the CLUB tubes and the crossfader slot */
+  --cfh-core: #fff0f6; /* hot centre of a lit tube; the crossfader cap */
+
   /* ---------- Gig-print palette: posters, sleeves, rug, social art ---------- */
   --print-paper: #f2e6cf;
   --print-red: #e2462f;

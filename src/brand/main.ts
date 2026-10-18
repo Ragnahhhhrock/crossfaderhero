@@ -92,6 +92,20 @@ document.getElementById('brand')!.innerHTML = `
     <div class="logo-tile dark"><img src="/avatar.svg" width="160" height="160" alt="The Crossfader Hero DJ avatar" /></div>
   </div>
 
+  <h2>Club CFH</h2>
+  <p>The club's own identity: <strong style="color:var(--text)">Club CFH</strong>, short for Club Crossfader Hero. It is venue signage, so it lives in neon: pink CFH tubes, a cyan CLUB, border and crossfader slot, and a hot white core where the glass is lit. The ring mark is the C of CFH with the crossfader slot running through its mouth. It appears as neon on the club's walls and booth, on the LED wall, and on screens; it never appears in the app's controls, where light means state.</p>
+  <div class="logo-tiles">
+    <div class="logo-tile dark"><img src="/club-cfh.svg" style="width:min(100%, 260px);height:auto" alt="Club CFH sign" /></div>
+    <div class="logo-tile dark"><img src="/club-cfh-mark.svg" width="120" height="120" alt="Club CFH ring mark" /></div>
+  </div>
+  <ul>
+    <li>Pink (<code>--cfh-pink</code>) is only ever CFH and the ring. Cyan (<code>--cfh-cyan</code>) is CLUB, the border and the slot. The cap is <code>--cfh-core</code>.</li>
+    <li>Always on a black board (<code>--graphite-1000</code>), never on paper or a photo. Clear space: the height of the CLUB letters on every side.</li>
+    <li>CLUB and CFH are the one place in the system where all caps is right: it is a sign, not a label.</li>
+    <li>On the LED wall the cap slides along its slot with the beat; every eighth bar the full sign takes the screen for a bar.</li>
+    <li>Don't recolour the tubes, outline the letters, set the lock-up in the app's chrome, or use deck blue and amber in it.</li>
+  </ul>
+
   <h2>Colour</h2>
   <p>Use the semantic aliases in UI code. Translucency comes in fixed shade and tint steps. Hot cues A–H use ${HOT_CUE_TOKENS.map((t) => `<code>--${t}</code>`).join(', ')}.</p>
   ${colourSections}
