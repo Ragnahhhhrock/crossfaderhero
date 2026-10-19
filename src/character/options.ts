@@ -2,6 +2,7 @@
  * The player's DJ: who they are and what they wear. Pure data, no DOM, so the
  * builder, the club and the tests can all share it.
  */
+import { isProfilePhoto } from '../club/imageMath';
 
 export type Gender = 'male' | 'female' | 'nonbinary';
 export type Body = 'slim' | 'average' | 'athletic' | 'heavy';
@@ -18,6 +19,8 @@ export type HatStyle = 'none' | 'cap' | 'beanie' | 'bucket';
 
 export interface Character {
   djName: string;
+  /** Profile picture: a small square image as a data URL. Empty: none. Shown on the club's screens. */
+  photo: string;
   gender: Gender;
   /** Centimetres. */
   height: number;
@@ -194,6 +197,7 @@ export function suggestName(rand: () => number = Math.random): string {
 export function defaultCharacter(): Character {
   return {
     djName: '',
+    photo: '',
     gender: 'male',
     height: 176,
     body: 'average',
@@ -238,6 +242,7 @@ export function randomCharacter(rand: () => number = Math.random, djName = ''): 
   const natural = HAIR_COLOURS.slice(0, 9);
   return {
     djName,
+    photo: '',
     gender,
     height,
     body: id(BODIES),
@@ -274,5 +279,6 @@ export function normalise(c: Partial<Character> | null | undefined): Character |
     tattoos: { ...d.tattoos, ...c.tattoos },
     height: Math.min(HEIGHT.max, Math.max(HEIGHT.min, Math.round(c.height ?? d.height))),
     djName: (c.djName ?? '').slice(0, NAME_MAX),
+    photo: isProfilePhoto(c.photo) ? c.photo : '',
   };
 }

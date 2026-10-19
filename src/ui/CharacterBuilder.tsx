@@ -6,7 +6,9 @@ import {
   METALS, NAME_MAX, PANTS, SHOES, SKIN_TONES, TATTOOS, TOPS, defaultCharacter, randomCharacter, suggestName,
   type Character, type Swatch,
 } from '../character/options';
+import { takePhoto } from '../club/camera';
 import { Figures } from '../club/people';
+import { chooseImages, fileToSource, profileDataUrl, type Source } from '../club/photos';
 import { hex } from '../design/tokens';
 import { useCharacter } from '../state/character';
 
@@ -173,6 +175,52 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'clothes', label: 'Clothes' },
 ];
 
+/** The DJ's profile picture: shown on the club's screens. Upload one or take it with the camera. */
+function ProfilePicture({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [problem, setProblem] = useState('');
+  const use = (src: Source | undefined) => {
+    if (!src) return;
+    const url = profileDataUrl(src);
+    if (url) {
+      setProblem('');
+      onChange(url);
+    } else setProblem("That picture couldn't be shrunk small enough. Try another.");
+  };
+  return (
+    <div className="cb-field">
+      <span className="cb-label">Profile picture</span>
+      <div className="cb-photo">
+        <div className="cb-photo-img">{value ? <img src={value} alt="Your profile picture" /> : <span aria-hidden>No picture</span>}</div>
+        <div className="cb-choices">
+          <button
+            className="tiny"
+            onClick={async () => {
+              const [file] = await chooseImages(false);
+              if (!file) return;
+              try {
+                use(await fileToSource(file));
+              } catch {
+                setProblem("That file couldn't be opened as a picture.");
+              }
+            }}
+          >
+            Upload
+          </button>
+          <button className="tiny" onClick={async () => use((await takePhoto({ square: true, title: 'Your DJ picture' })) ?? undefined)}>
+            Take photo
+          </button>
+          {value && (
+            <button className="tiny" onClick={() => onChange('')}>
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="cb-note">{problem || 'Goes on the club screens beside your name. It stays on this device.'}</p>
+    </div>
+  );
+}
+
 /** Build your DJ: on first start, and later from your name in the top bar. */
 export function CharacterBuilder({ onClose }: { onClose?: () => void }) {
   const saved = useCharacter((s) => s.character);
@@ -239,6 +287,7 @@ export function CharacterBuilder({ onClose }: { onClose?: () => void }) {
             <div className="cb-tabpanel" role="tabpanel">
               {tab === 'you' && (
                 <>
+                  <ProfilePicture value={c.photo} onChange={(v) => set('photo', v)} />
                   <Choice label="Gender" options={GENDERS} value={c.gender} onChange={(v) => set('gender', v)} />
                   <div className="cb-field">
                     <label className="cb-label" htmlFor="cb-height">
@@ -299,8 +348,8 @@ export function CharacterBuilder({ onClose }: { onClose?: () => void }) {
         </div>
 
         <div className="welcome-actions cb-actions">
-          <button className="tiny" onClick={() => setC((o) => randomCharacter(Math.random, o.djName))}>Randomise</button>
-          <button className="tiny" onClick={() => setC((o) => ({ ...defaultCharacter(), djName: o.djName }))}>Reset</button>
+          <button className="tiny" onClick={() => setC((o) => ({ ...randomCharacter(Math.random, o.djName), photo: o.photo }))}>Randomise</button>
+          <button className="tiny" onClick={() => setC((o) => ({ ...defaultCharacter(), djName: o.djName, photo: o.photo }))}>Reset</button>
           <span className="cb-spacer" />
           {!name && <span className="cb-hint">Give your DJ a name to continue</span>}
           {!first && <button className="tiny" onClick={onClose}>Cancel</button>}

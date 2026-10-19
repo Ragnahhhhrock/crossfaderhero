@@ -1,4 +1,8 @@
+import { track } from '../analytics/ga';
+import { useCharacter } from '../state/character';
 import { hue } from '../design/tokens';
+import { takePhoto, cameraSupported } from './camera';
+import { chooseImages, fileToSource, MAX_PHOTOS, photoStore, profileDataUrl, type Source } from './photos';
 import type { Club } from './Club';
 import {
   CAPACITY,
@@ -26,8 +30,9 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
 }
 
 /** The club's control desk: a side panel on desktop, a bottom sheet on phones. */
-export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings): { panel: HTMLElement; setOpen: (open: boolean) => void } {
+export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings): { panel: HTMLElement; setOpen: (open: boolean) => void; dispose: () => void } {
   let state = { ...initial };
+  const disposers: (() => void)[] = [];
   const syncs: (() => void)[] = [];
   const set = <K extends Key>(k: K, v: ClubSettings[K]) => {
     state = { ...state, [k]: v };
@@ -248,6 +253,8 @@ export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings)
       ['grid', 'Retro grid'],
       ['logo', 'Club CFH'],
       ['name', 'DJ name'],
+      ['photos', 'Photos'],
+      ['portrait', 'DJ picture'],
     ],
     3,
   );
@@ -257,6 +264,127 @@ export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings)
     ['mix', 'Their own'],
     ['follow', 'Same as main'],
   ]);
+
+  // ---------- your pictures on the screens
+  const pics = section('Photos', undefined, 'Put your own pictures on the screens, and a picture of your DJ. They stay on this device.');
+  const picMsg = el('p', 'club-note club-msg');
+  picMsg.setAttribute('role', 'status');
+  const say = (text: string) => (picMsg.textContent = text);
+
+  const showOnWall = (mode: ScreenMode) => {
+    if (state.screenMode !== mode || !state.screen) setMany({ screen: true, screenMode: mode });
+  };
+  const addWall = async (sources: Source[]) => {
+    let added = 0;
+    for (const src of sources) {
+      if (!(await photoStore.add(src))) {
+        say(`The screens hold ${MAX_PHOTOS} photos. Remove one to add another.`);
+        break;
+      }
+      added++;
+    }
+    if (added) {
+      say('');
+      track('club_photo_added', { count: added });
+      showOnWall('photos');
+    }
+  };
+  const tryAll = async (files: File[]) => {
+    const ok: Source[] = [];
+    for (const f of files) {
+      try {
+        ok.push(await fileToSource(f));
+      } catch {
+        say(`${f.name || 'That file'} couldn't be opened as a picture.`);
+      }
+    }
+    return ok;
+  };
+
+  const adders = el('div', 'club-pair');
+  const addBtn = el('button', 'club-btn small', 'Add photos');
+  addBtn.onclick = async () => addWall(await tryAll(await chooseImages(true)));
+  const camBtn = el('button', 'club-btn small', 'Take photo');
+  camBtn.title = cameraSupported() ? 'Use the webcam or phone camera' : 'Opens your phone camera or a file chooser';
+  camBtn.onclick = async () => {
+    const shot = await takePhoto({ title: 'Photo for the screens' });
+    if (shot) await addWall([shot]);
+  };
+  adders.append(addBtn, camBtn);
+  pics.append(adders);
+
+  const thumbs = el('div', 'club-thumbs');
+  pics.append(thumbs, picMsg);
+
+  /** Set the DJ's profile picture from any picture source, and put it on the wall. */
+  const setProfile = (src: Source | null) => {
+    const c = useCharacter.getState().character;
+    if (!c) return say('Create your DJ first, then add a picture.');
+    const photo = src ? profileDataUrl(src) : '';
+    if (src && !photo) return say("That picture couldn't be shrunk small enough. Try another.");
+    useCharacter.getState().save({ ...c, photo });
+    say('');
+    if (photo) {
+      track('club_profile_photo_set');
+      showOnWall('portrait');
+    }
+  };
+
+  const drawThumbs = () => {
+    thumbs.replaceChildren();
+    const list = photoStore.list();
+    list.forEach((p, i) => {
+      const cell = el('div', 'club-thumb');
+      const img = el('img');
+      img.src = p.url;
+      img.alt = `Photo ${i + 1}`;
+      img.draggable = false;
+      const dj = el('button', 'club-thumb-btn dj', 'DJ');
+      dj.title = 'Use as your DJ picture';
+      dj.setAttribute('aria-label', `Use photo ${i + 1} as your DJ picture`);
+      dj.onclick = () => setProfile(p.canvas as Source);
+      const rm = el('button', 'club-thumb-btn rm', '×');
+      rm.title = 'Remove this photo';
+      rm.setAttribute('aria-label', `Remove photo ${i + 1}`);
+      rm.onclick = () => photoStore.remove(p.id);
+      cell.append(img, dj, rm);
+      thumbs.append(cell);
+    });
+    thumbs.hidden = list.length === 0;
+    addBtn.disabled = photoStore.full;
+  };
+  disposers.push(photoStore.subscribe(drawThumbs));
+  drawThumbs();
+
+  // the DJ's own picture
+  const prof = el('div', 'club-profile');
+  const profImg = el('img', 'club-profile-img');
+  profImg.alt = '';
+  const profBtns = el('div', 'club-profile-btns');
+  const profUp = el('button', 'club-btn small', 'Upload');
+  profUp.onclick = async () => {
+    const [f] = await tryAll((await chooseImages(false)).slice(0, 1));
+    if (f) setProfile(f);
+  };
+  const profCam = el('button', 'club-btn small', 'Camera');
+  profCam.onclick = async () => {
+    const shot = await takePhoto({ square: true, title: 'Your DJ picture' });
+    if (shot) setProfile(shot);
+  };
+  const profRm = el('button', 'club-btn small', 'Remove');
+  profRm.onclick = () => setProfile(null);
+  profBtns.append(profUp, profCam, profRm);
+  prof.append(profImg, el('span', 'club-label', 'DJ picture'), profBtns);
+  pics.append(prof);
+  const drawProfile = () => {
+    const c = useCharacter.getState().character;
+    const has = !!c?.photo;
+    profImg.hidden = !has;
+    if (has) profImg.src = c!.photo;
+    profRm.hidden = !has;
+  };
+  disposers.push(useCharacter.subscribe(drawProfile));
+  drawProfile();
 
   const room = section('Venue');
   toggleRow(room, 'LED dance floor', 'floorLeds');
@@ -287,5 +415,5 @@ export function buildPanel(root: HTMLElement, club: Club, initial: ClubSettings)
   if (window.matchMedia('(max-width: 720px)').matches) panel.classList.add('collapsed');
 
   syncs.forEach((f) => f());
-  return { panel, setOpen: (open: boolean) => panel.classList.toggle('desk-open', open) };
+  return { panel, setOpen: (open: boolean) => panel.classList.toggle('desk-open', open), dispose: () => disposers.forEach((f) => f()) };
 }

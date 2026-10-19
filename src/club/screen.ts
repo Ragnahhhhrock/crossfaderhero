@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { font, hue, token } from '../design/tokens';
+import { alpha, font, hue, token } from '../design/tokens';
 import { drawCfh, logoSize, tube } from './neon';
+import { coverRect } from './imageMath';
 import type { ScreenMode } from './settings';
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -31,6 +32,12 @@ export class LedWall {
   djName = '';
   /** Station branding on top of the visual: the corner bug, the name break and the Club CFH ident. */
   chrome = true;
+  /** The player's own pictures, for the photos visual. */
+  photos: HTMLCanvasElement[] = [];
+  /** The DJ's profile picture, for the portrait visual. */
+  portrait: HTMLCanvasElement | null = null;
+  /** With nothing to show, say how to add it (the big wall does; the side screens just show something else). */
+  hintEmpty = false;
   private ctx: CanvasRenderingContext2D;
   private small: HTMLCanvasElement;
   private sctx: CanvasRenderingContext2D;
@@ -74,6 +81,9 @@ export class LedWall {
   }
 
   draw(mode: ScreenMode, beats: number, time: number, speed: number, baseHue: number, energy: number): void {
+    // pictures asked for but not added yet: tell the player how (main wall), or show something else
+    if (mode === 'photos' && !this.photos.length) mode = this.hintEmpty ? 'photos' : this.portrait ? 'portrait' : 'logo';
+    else if (mode === 'portrait' && !this.portrait) mode = this.hintEmpty ? 'portrait' : 'name';
     const t = time * (0.4 + speed * 1.6);
     const ph = beats % 1;
     const kick = Math.pow(1 - ph, 2.5);
@@ -100,6 +110,12 @@ export class LedWall {
         break;
       case 'name':
         this.nameScreen(beats, kick);
+        break;
+      case 'photos':
+        this.photoScreen(beats, kick, baseHue);
+        break;
+      case 'portrait':
+        this.portraitScreen(beats, kick);
         break;
     }
     ctx.restore();
@@ -337,6 +353,116 @@ export class LedWall {
     ctx.font = font('lcd', 18 * this.u);
     ctx.fillStyle = token('cfh-cyan');
     ctx.fillText('crossfaderhero.com', w / 2, h * 0.96);
+  }
+
+
+  // ---------------------------------------------------------------- the player's pictures
+
+  /** A picture filling the screen with no gaps or stretching, a little zoomed. */
+  private cover(img: HTMLCanvasElement, alpha: number, zoom: number): void {
+    const { ctx, w, h } = this;
+    const r = coverRect(img.width, img.height, w, h, zoom);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, r.sx, r.sy, r.sw, r.sh, 0, 0, w, h);
+    ctx.globalAlpha = 1;
+  }
+
+  /** Say what to do when there is nothing to show yet. */
+  private placeholder(line1: string, line2: string): void {
+    const { ctx, w, h } = this;
+    this.clear(1);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = token('cfh-cyan');
+    ctx.font = font('ui', Math.max(12, h * 0.1), 700);
+    ctx.fillText(line1, w / 2, h * 0.44, w * 0.9);
+    ctx.fillStyle = token('ink-100');
+    ctx.font = font('lcd', Math.max(10, h * 0.062));
+    ctx.fillText(line2, w / 2, h * 0.6, w * 0.9);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  /**
+   * The photo screen: your pictures, one every eight beats, crossfading in on the
+   * downbeat and drifting slowly closer, with a little thump and a colour flash on the kick.
+   */
+  private photoScreen(beats: number, kick: number, h0: number): void {
+    const { ctx, w, h } = this;
+    const n = this.photos.length;
+    if (!n) return this.placeholder('Add your photos', 'Photos section of the light desk');
+    this.clear(1);
+    const slide = Math.floor(beats / 8);
+    const tt = beats % 8;
+    const drift = 1 + 0.06 * (tt / 8) + 0.015 * kick;
+    const fade = clamp01(tt / 1.2);
+    if (n > 1 && fade < 1) this.cover(this.photos[(slide - 1 + n * 2) % n], 1, 1.06);
+    this.cover(this.photos[slide % n], n > 1 ? fade : 1, drift);
+    // a colour wash that follows the lights, brightest on the kick
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = hue(h0, 1, 0.5, 0.05 + 0.13 * kick);
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = 'source-over';
+    // darker corners, so it reads as a screen and not a flat picture
+    const v = ctx.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, Math.hypot(w, h) * 0.55);
+    v.addColorStop(0, alpha('black', 0));
+    v.addColorStop(1, alpha('black', 0.55));
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  /** The portrait screen: the DJ's picture in a neon frame, with their name beside it. */
+  private portraitScreen(beats: number, kick: number): void {
+    const { ctx, w, h } = this;
+    const pic = this.portrait;
+    if (!pic) return this.placeholder('Add a DJ picture', 'Photos section of the light desk');
+    this.clear(0.85);
+    const size = Math.min(h * 0.78, w * 0.4);
+    const gap = w * 0.04;
+    const textW = Math.min(w * 0.5, w - size - gap - w * 0.16);
+    const x0 = (w - (size + gap + textW)) / 2;
+    const radius = size * 0.08;
+    // the picture, clipped to a rounded frame, thumping a little on the kick
+    const s = 1 + 0.02 * kick;
+    ctx.save();
+    ctx.translate(x0 + size / 2, h / 2);
+    ctx.scale(s, s);
+    ctx.translate(-size / 2, -size / 2);
+    ctx.beginPath();
+    ctx.roundRect(0, 0, size, size, radius);
+    ctx.save();
+    ctx.clip();
+    const r = coverRect(pic.width, pic.height, size, size);
+    ctx.drawImage(pic, r.sx, r.sy, r.sw, r.sh, 0, 0, size, size);
+    ctx.restore();
+    const frame = new Path2D();
+    frame.roundRect(0, 0, size, size, radius);
+    tube(ctx, frame, beats % 8 < 4 ? 'cfh-cyan' : 'cfh-pink', Math.max(2, size * 0.025), 'layered', 0.8 + 0.2 * kick);
+    ctx.restore();
+    // who it is
+    const tx = x0 + size + gap;
+    const name = (this.djName.trim() || 'Guest DJ').toUpperCase();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    let fs = Math.round(h * 0.2);
+    ctx.font = font('ui', fs, 700);
+    while (fs > 12 && ctx.measureText(name).width > textW) ctx.font = font('ui', (fs -= 2), 700);
+    ctx.save();
+    ctx.shadowColor = token('cfh-pink');
+    ctx.shadowBlur = fs * (0.25 + 0.2 * kick);
+    ctx.fillStyle = token('cfh-core');
+    ctx.fillText(name, tx, h / 2 + fs * 0.3, textW);
+    ctx.restore();
+    // a recording dot blinking on the beat, and the web address
+    const lcd = Math.max(10, Math.round(h * 0.06));
+    ctx.font = font('lcd', lcd);
+    ctx.fillStyle = token('cfh-cyan');
+    ctx.fillText('LIVE ON THE DECKS', tx + lcd * 1.4, h / 2 - fs * 0.85, textW);
+    ctx.fillStyle = hue(0, 1, 0.5, beats % 1 < 0.5 ? 1 : 0.25);
+    ctx.beginPath();
+    ctx.arc(tx + lcd * 0.4, h / 2 - fs * 0.85 - lcd * 0.3, lcd * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = token('ink-100');
+    ctx.fillText('crossfaderhero.com', tx, h / 2 + fs * 0.3 + lcd * 2, textW);
   }
 
   // ---------------------------------------------------------------- the DJ's name

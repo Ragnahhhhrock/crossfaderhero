@@ -6,6 +6,7 @@ import { track } from '../analytics/ga';
 import { useCharacter } from '../state/character';
 import { Club, type BoothView } from './Club';
 import { buildPanel } from './panel';
+import { photoStore, urlToCanvas } from './photos';
 import { loadSettings } from './settings';
 import './club.css';
 
@@ -34,7 +35,7 @@ export function ClubView({ mode, onModeChange, boothCentre, blockKeys, gear, des
   const [lookHint, setLookHint] = useState(true);
   const host = useRef<HTMLDivElement>(null);
   const clubRef = useRef<Club | null>(null);
-  const desk = useRef<{ panel: HTMLElement; setOpen: (o: boolean) => void } | null>(null);
+  const desk = useRef<{ panel: HTMLElement; setOpen: (o: boolean) => void; dispose: () => void } | null>(null);
   const gearRef = useRef(gear);
   gearRef.current = gear;
   const [failed, setFailed] = useState(false);
@@ -59,9 +60,15 @@ export function ClubView({ mode, onModeChange, boothCentre, blockKeys, gear, des
     clubRef.current = club;
     (globalThis as unknown as { club: Club }).club = club;
     desk.current = buildPanel(el.parentElement!, club, settings);
+    // your pictures for the screens: whatever was saved, then any you add
+    const sync = () => club.setPhotos(photoStore.canvases());
+    const unsub = photoStore.subscribe(sync);
+    void photoStore.load().then(sync);
     return () => {
+      unsub();
       club.renderer.setAnimationLoop(null);
       club.renderer.dispose();
+      desk.current?.dispose();
       desk.current?.panel.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -83,6 +90,16 @@ export function ClubView({ mode, onModeChange, boothCentre, blockKeys, gear, des
   useEffect(() => {
     clubRef.current?.setPlayer(character);
   }, [character]);
+  // the DJ's profile picture, for the portrait screen
+  const profilePhoto = character?.photo ?? '';
+  useEffect(() => {
+    let live = true;
+    if (!profilePhoto) clubRef.current?.setPortrait(null);
+    else urlToCanvas(profilePhoto).then((c) => live && clubRef.current?.setPortrait(c), () => live && clubRef.current?.setPortrait(null));
+    return () => {
+      live = false;
+    };
+  }, [profilePhoto]);
   useEffect(() => {
     desk.current?.setOpen(deskOpen);
   }, [deskOpen]);

@@ -4,7 +4,7 @@ export type LightMode = 'wash' | 'chase' | 'pulse' | 'movers';
 export type Palette = 'club' | 'sunset' | 'ice' | 'jungle' | 'rainbow';
 export type LaserColour = 'green' | 'red' | 'blue' | 'rgb';
 export type LaserPattern = 'fan' | 'sweep' | 'tunnel';
-export type ScreenMode = 'tunnel' | 'spectrum' | 'kaleido' | 'plasma' | 'grid' | 'logo' | 'name';
+export type ScreenMode = 'tunnel' | 'spectrum' | 'kaleido' | 'plasma' | 'grid' | 'logo' | 'name' | 'photos' | 'portrait';
 /** What the extra screens round the room show: their own visuals, or the main screen's. */
 export type ExtraScreens = 'mix' | 'follow';
 export type StrobeRate = 1 | 2 | 4;

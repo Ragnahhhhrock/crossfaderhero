@@ -414,3 +414,111 @@ button:focus-visible {
 .mode-booth .club-stage:active {
   cursor: grabbing;
 }
+
+/* ---------- your pictures on the screens ---------- */
+.club-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.club-pair .club-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.club-thumbs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.club-thumbs[hidden] {
+  display: none;
+}
+.club-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-input);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-well);
+}
+.club-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.club-thumb-btn {
+  position: absolute;
+  font: inherit;
+  font-size: 11px;
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  color: var(--text);
+  background: var(--glass-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-chip);
+  padding: 3px 5px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+}
+.club-thumb-btn.dj {
+  left: 3px;
+  bottom: 3px;
+}
+.club-thumb-btn.rm {
+  right: 3px;
+  top: 3px;
+  font-size: 14px;
+}
+.club-thumb:hover .club-thumb-btn,
+.club-thumb:focus-within .club-thumb-btn {
+  opacity: 1;
+}
+.club-thumb-btn:hover {
+  border-color: var(--cue);
+}
+/* touch screens have no hover: keep the buttons visible */
+@media (hover: none) {
+  .club-thumb-btn {
+    opacity: 1;
+  }
+}
+.club-profile {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  grid-template-areas: 'img label' 'img btns';
+  column-gap: var(--space-4);
+  row-gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.club-profile-img {
+  grid-area: img;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--border-strong);
+}
+.club-profile-img[hidden] {
+  display: none;
+}
+.club-profile .club-label {
+  grid-area: label;
+}
+.club-profile-btns {
+  grid-area: btns;
+  display: flex;
+  gap: var(--space-3);
+}
+.club-profile-img[hidden] ~ .club-label,
+.club-profile-img[hidden] ~ .club-profile-btns {
+  grid-column: 1 / -1;
+}
+.club-msg:empty {
+  display: none;
+}

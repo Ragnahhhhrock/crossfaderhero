@@ -52,8 +52,8 @@ interface ExtraScreen {
   modes: ScreenMode[];
   offset: number;
 }
-const SIDE_MODES: ScreenMode[] = ['spectrum', 'name', 'kaleido', 'plasma', 'grid', 'tunnel', 'logo'];
-const STRIP_MODES: ScreenMode[] = ['spectrum', 'name', 'plasma', 'logo', 'tunnel'];
+const SIDE_MODES: ScreenMode[] = ['spectrum', 'photos', 'name', 'kaleido', 'portrait', 'plasma', 'grid', 'photos', 'tunnel', 'logo'];
+const STRIP_MODES: ScreenMode[] = ['spectrum', 'photos', 'name', 'plasma', 'portrait', 'logo', 'tunnel'];
 
 /** What the club's clock is following right now. */
 export interface ClubClock {
@@ -286,6 +286,7 @@ export class Club {
     this.staff = new Figures([{ x: -0.8, y: 0, z: BAR_Z + BARTENDER_Z, yaw: Math.PI, scale: 1, style: 'bartender', phase: 0, r: 0.3 }], 33, 'staff');
     this.scene.add(this.staff.group);
 
+    this.wall.hintEmpty = true; // the big wall says how to add pictures; the side screens just show something else
     this.apply(settings);
     const ro = new ResizeObserver(() => this.resize(container));
     ro.observe(container);
@@ -569,6 +570,18 @@ export class Club {
     this.moveCamera(pose.pos, pose.target);
     this.centreMove = { from: this.viewCentre, to: this.lookAround ? 0.5 : this.boothCentre };
     this.dj.group.visible = this.boothView === 'behind';
+  }
+
+  /** Your own pictures for the photo visual, on the big wall and every screen round the room. */
+  setPhotos(list: HTMLCanvasElement[]): void {
+    this.wall.photos = list;
+    for (const e of this.extras) e.wall.photos = list;
+  }
+
+  /** The DJ's profile picture, for the portrait visual. */
+  setPortrait(pic: HTMLCanvasElement | null): void {
+    this.wall.portrait = pic;
+    for (const e of this.extras) e.wall.portrait = pic;
   }
 
   /** Your DJ's look and name. Shown once you've taken over the decks. */
@@ -1231,7 +1244,9 @@ export class Club {
       const step = Math.floor(beats / 16);
       this.extras.forEach((e, i) => {
         if ((this.frameCount + i) % 2) return;
-        const mode = s.extraMode === 'follow' ? s.screenMode : e.modes[(step + e.offset) % e.modes.length];
+        // pictures only join the cycle once there are some to show
+        const pool = e.modes.filter((m) => (m === 'photos' ? this.wall.photos.length > 0 : m === 'portrait' ? !!this.wall.portrait : true));
+        const mode = s.extraMode === 'follow' ? s.screenMode : pool[(step + e.offset) % pool.length];
         e.wall.draw(mode, beats, time, s.screenSpeed, hueNow, energy);
       });
     } else if (this.extrasLit) {
