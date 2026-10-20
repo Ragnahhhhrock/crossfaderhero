@@ -9,10 +9,15 @@
  *
  * /api/cover looks up album art for tracks without embedded pictures (see cover.js).
  *
+ * /api/stats keeps the global player totals shown on the home page (see stats.js).
+ *
  * Health checks: /k7q2m/healthy and /k7q2m/?validate_geo=healthy both return "ok".
  */
 
 import { COVER_PATH, handleCover } from './cover.js';
+import { STATS_PATH, handleStats } from './stats.js';
+
+export { StatsCounter } from './statsCounter.js';
 
 const TAG_ID = 'G-R8RG80E41X';
 const MEASUREMENT_PATH = '/k7q2m';
@@ -64,6 +69,13 @@ export default {
         return await handleCover(request);
       } catch {
         return new Response('cover lookup failed', { status: 502 });
+      }
+    }
+    if (pathname === STATS_PATH) {
+      try {
+        return await handleStats(request, env);
+      } catch {
+        return new Response('stats unavailable', { status: 502 });
       }
     }
     return env.ASSETS.fetch(request);

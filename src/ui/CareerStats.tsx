@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useCareer } from '../career/store';
-import { useStats } from '../state/stats';
+import { useStats, type Totals } from '../state/stats';
 
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -43,24 +42,23 @@ function Stat({ label, value, index, format }: { label: string; value: number; i
   );
 }
 
-const hours = (secs: number) => {
-  const m = Math.floor(secs / 60);
-  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
-};
+const hours = (secs: number) => (secs < 3600 ? `${Math.floor(secs / 60)}m` : `${Math.floor(secs / 3600).toLocaleString()}h`);
 
-/** Lifetime stats on the home view. Numbers animate up from zero on page load. */
+/** Totals for every player, on the home view. Numbers animate up from zero on page load. */
 export function CareerStats() {
-  const mixed = useCareer((s) => s.mixes);
-  const { tracksPlayed, gigs, vinylDrops, playSeconds } = useStats();
+  const totals = useStats((s) => s.totals);
+  const pending = useStats((s) => s.pending);
+  if (!totals) return null; // not loaded (or no backend): show nothing rather than zeros
+  const n = (k: keyof Totals) => totals[k] + pending[k];
   return (
-    <section className="career-stats" aria-label="Your career so far">
-      <h2 className="stats-title">Your career so far</h2>
+    <section className="career-stats" aria-label="Crossfader Hero players, all time">
+      <h2 className="stats-title">All players, all time</h2>
       <dl className="stats-grid">
-        <Stat index={0} label="Tracks played" value={tracksPlayed} />
-        <Stat index={1} label="Tracks mixed" value={mixed} />
-        <Stat index={2} label="Club gigs" value={gigs} />
-        <Stat index={3} label="Records dropped" value={vinylDrops} />
-        <Stat index={4} label="Time on the decks" value={playSeconds} format={hours} />
+        <Stat index={0} label="Tracks played" value={n('tracksPlayed')} />
+        <Stat index={1} label="Tracks mixed" value={n('tracksMixed')} />
+        <Stat index={2} label="Club gigs" value={n('gigs')} />
+        <Stat index={3} label="Records dropped" value={n('vinylDrops')} />
+        <Stat index={4} label="Time on the decks" value={n('playSeconds')} format={hours} />
       </dl>
     </section>
   );
