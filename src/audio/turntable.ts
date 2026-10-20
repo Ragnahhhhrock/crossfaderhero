@@ -339,6 +339,7 @@ export class Turntable implements Player {
     this.ended = false;
     this.post({ type: 'needle', down: true, pos: p });
     if (pos !== undefined) this.rep = { ...this.rep, pos: p, needle: true, t: this.ctx.currentTime };
+    emitAction('needleDrop', this.id);
     if (this.motor) emitAction('play', this.id);
     this.changed();
   }

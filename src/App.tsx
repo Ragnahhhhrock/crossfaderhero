@@ -26,6 +26,8 @@ import { initSetup, useSetup } from './state/setup';
 import type { Turntable } from './audio/turntable';
 import { TipLayer, Tour } from './ui/Tips';
 import { useTips } from './state/tips';
+import { startStats } from './state/stats';
+import { CareerStats } from './ui/CareerStats';
 
 interface DeckKeys {
   cue: string;
@@ -314,9 +316,13 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
     void useLibrary.getState().init();
     initSetup();
     startCoach();
+    const stopStats = startStats(venue);
     const unlock = () => engine.resume();
     window.addEventListener('pointerdown', unlock, { once: true });
-    return () => window.removeEventListener('pointerdown', unlock);
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      stopStats();
+    };
   }, []);
 
   // analytics: stepping up to / back from the decks
@@ -556,6 +562,7 @@ export default function App({ venue = 'bedroom' }: { venue?: Venue }) {
         </div>
       </div>
 
+      {mode === 'room' && !setupPending && <CareerStats />}
       <Coach onOpenLessons={() => setLessonsOpen(true)} />
       <Toasts />
       {help && <Help onClose={() => setHelp(false)} onTour={() => (setHelp(false), setMode('booth'), startTour())} />}

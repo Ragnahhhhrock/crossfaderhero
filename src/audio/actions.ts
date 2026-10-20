@@ -20,6 +20,7 @@ export type ActionType =
   | 'scratchFlip'
   | 'crossfader'
   | 'play'
+  | 'needleDrop'
   | 'trackEnd';
 
 export interface Action {
