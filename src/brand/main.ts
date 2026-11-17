@@ -155,6 +155,6 @@ document.getElementById('brand')!.innerHTML = `
     <figure style="margin:0"><img src="/og-image.png" alt="Open Graph image, 1200 by 630" /><figcaption class="note">Open Graph · 1200 × 630</figcaption></figure>
     <figure style="margin:0"><img src="/twitter-card.png" alt="Twitter card, 1200 by 600" /><figcaption class="note">Twitter card · 1200 × 600</figcaption></figure>
   </div>
-  <p class="note">Contact: <a href="mailto:contact@crossfaderhero.com">contact@crossfaderhero.com</a></p>
+  <p class="note"></p>
   <p class="note">Another <a href="https://malgordon.com/">Mal Gordon</a> creation</p>
 </div>`;
